@@ -7,7 +7,6 @@ fn part1_withdata(data: String) -> anyhow::Result<u32> {
     Ok(parsed.iter().filter(|r2| r2.contains_self()).count() as u32)
 }
 
-
 fn part2_withdata(data: String) -> anyhow::Result<u32> {
     let parsed = parse1(&data)?;
     Ok(parsed.iter().filter(|r2| r2.overlaps()).count() as u32)
@@ -22,10 +21,8 @@ pub fn part2() -> anyhow::Result<u32> {
 }
 
 fn get_data() -> String {
-    include_str!("../day4-inp.txt").to_string()
+    include_str!("../inputs/day4-inp.txt").to_string()
 }
-
-type Data1 = Vec<Range2>;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Range2 {
@@ -43,7 +40,7 @@ impl Range2 {
     fn overlaps(&self) -> bool {
         //! if the two ranges together are "fatter" than the full range,
         //! the ranges overlap
-        //! 
+        //!
         //! see [here](https://i.stack.imgur.com/6iULg.png)
 
         let start = min(self.fst.start, self.snd.start);
@@ -51,7 +48,10 @@ impl Range2 {
         // the minimum range required to overlap
         let fst_width = self.fst.end - self.fst.start;
         let snd_width = self.snd.end - self.snd.start;
-        fst_width + snd_width > (end - start)
+        fst_width + snd_width >= (end - start)
+
+        // (self.fst.start <= self.snd.end && self.fst.end >= self.snd.start)
+        //     || (self.snd.start <= self.fst.end && self.snd.end >= self.fst.start)
     }
 }
 
@@ -87,20 +87,20 @@ impl FromStr for Range {
     }
 }
 
-fn parse1(inp: &str) -> anyhow::Result<Data1> {
-    inp.lines().map(<str>::parse).collect()
+fn parse1(inp: &str) -> anyhow::Result<Vec<Range2>> {
+    inp.lines().map(<str>::parse::<Range2>).collect()
 }
 
 #[test]
 fn test_part1() -> anyhow::Result<()> {
-    let data = include_str!("../day4-test.txt").to_owned();
+    let data = include_str!("../inputs/day4-test.txt").to_owned();
     dbg!(part1_withdata(data)).map(|_| ())?;
 
     Ok(())
 }
 
 #[test]
-fn test() {
+fn contains_self_works() {
     [
         ("2-4,6-8", false),
         ("2-3,4-5", false),
@@ -123,5 +123,28 @@ fn test() {
             range.contains_self(),
             range.contains_self() == *expected
         )
+    });
+}
+
+#[test]
+fn overlap_works() {
+    [
+        ("2-4,6-8", false),
+        ("2-3,4-5", false),
+        ("5-7,7-9", true),
+        ("2-8,3-7", true),
+        ("6-6,4-6", true),
+        ("2-6,4-8", true),
+        ("1-20,2-21", true),
+    ]
+    .iter()
+    .map(|(x, y)| (x.parse::<Range2>().unwrap(), y))
+    .for_each(|(range, expected)| {
+        assert_eq!(range.overlaps(), *expected);
+        // eprintln!(
+        //     "for {range:?}: {}, expected? {}",
+        //     range.overlaps(),
+        //     range.overlaps() == *expected
+        // )
     });
 }

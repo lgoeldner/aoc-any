@@ -19,7 +19,7 @@ fn l_r_diff(data: &Data1) -> char {
 }
 
 fn read_input() -> String {
-    include_str!("../day3-inp.txt").to_owned()
+    include_str!("../inputs/day3-inp.txt").to_owned()
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone)]
