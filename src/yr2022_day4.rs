@@ -31,27 +31,26 @@ struct Range2 {
 }
 
 impl Range2 {
+    // checks if any of the two ranges is fully contained in the other
     fn contains_self(&self) -> bool {
-        let start_diff: i64 = self.fst.start as i64 - self.snd.start as i64;
+        let start_diff = self.fst.start as i64 - self.snd.start as i64;
         let end_diff = self.fst.end as i64 - self.snd.end as i64;
         ((start_diff >= 0) == (end_diff <= 0)) || ((start_diff <= 0) == (end_diff >= 0))
     }
 
+    /// if the two ranges together are "fatter" than the full range,
+    /// the ranges overlap
+    ///
+    /// see [here](https://i.stack.imgur.com/6iULg.png)
     fn overlaps(&self) -> bool {
-        //! if the two ranges together are "fatter" than the full range,
-        //! the ranges overlap
-        //!
-        //! see [here](https://i.stack.imgur.com/6iULg.png)
-
+        // the full range taken up by the two ranges
         let start = min(self.fst.start, self.snd.start);
         let end = max(self.fst.end, self.snd.end);
-        // the minimum range required to overlap
+        // the widths of each range
         let fst_width = self.fst.end - self.fst.start;
         let snd_width = self.snd.end - self.snd.start;
+        // if the sum of the widths is greater or equal to the full range, it has to overlap
         fst_width + snd_width >= (end - start)
-
-        // (self.fst.start <= self.snd.end && self.fst.end >= self.snd.start)
-        //     || (self.snd.start <= self.fst.end && self.snd.end >= self.fst.start)
     }
 }
 
@@ -141,10 +140,5 @@ fn overlap_works() {
     .map(|(x, y)| (x.parse::<Range2>().unwrap(), y))
     .for_each(|(range, expected)| {
         assert_eq!(range.overlaps(), *expected);
-        // eprintln!(
-        //     "for {range:?}: {}, expected? {}",
-        //     range.overlaps(),
-        //     range.overlaps() == *expected
-        // )
     });
 }
