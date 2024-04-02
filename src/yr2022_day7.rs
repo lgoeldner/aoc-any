@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use anyhow::{anyhow, Ok};
+use anyhow::{anyhow, Context, Ok};
 
 pub fn part1() -> anyhow::Result<()> {
     let parsed = parse(get_data())?;
@@ -20,7 +20,7 @@ pub fn part1() -> anyhow::Result<()> {
 
 #[derive(Debug, Default)]
 struct Dir {
-    size: usize,
+    size: u64,
     files: Vec<File>,
     children: Vec<String>,
 }
@@ -29,7 +29,6 @@ fn build_treemap(mut inp: Vec<Command>) {
     let mut treemap = HashMap::from([(vec!["/".to_string()], Dir::default())]);
     let mut curr_pos = vec!["/".to_string()];
     for cmd in inp {
-        // eprintln!("{:?}, {:?}, {:?}", cmd, &treemap, &curr_pos);
         match cmd {
             Command::Cd { to } => match to {
                 CdTarget::Name(target_name) => curr_pos.push(target_name),
@@ -43,18 +42,47 @@ fn build_treemap(mut inp: Vec<Command>) {
             },
             Command::Ls { result } => {
                 for dir in result {
-                    treemap.insert(curr_pos.clone(), dir.into());
-                    update_parents(&mut treemap, );
-                    dbg!(&treemap);
+                    let new_dir: Dir = dir.into();
+                    update_parents(&mut treemap, &curr_pos, new_dir.size);
+                    treemap.insert(curr_pos.clone(), new_dir);
+
+                    // dbg!(&treemap);
                 }
             }
         }
     }
 }
 
-fn update_parents(treemap: &mut HashMap<Vec<String>, Dir>, pos: &Vec<String>, size: u64) {
-    fn do_update_parents(treemap: &mut HashMap<Vec<String>, Dir>, pos: &[String], size: u64) {
-        let [head, tail @ ..] = pos else { return };
+fn update_parents(
+    treemap: &mut HashMap<Vec<String>, Dir>,
+    pos: &Vec<String>,
+    size: u64,
+) -> anyhow::Result<()> {
+    fn do_update_parents(
+        treemap: &mut HashMap<Vec<String>, Dir>,
+        pos: &[String],
+        size: u64,
+    ) -> anyhow::Result<()> {
+        if pos.is_empty() {
+            return Ok(());
+        }
+        // if pos.len() == 1 {
+        //     // reached root
+        //     let root_node = dbg!(treemap.get(["/".to_owned()].as_slice()).context(""))?;
+        // } else
+
+        let [parent_path @ .., curr_path] = dbg!(pos) else {
+            dbg!("irrefutable reached", pos);
+            return Err(anyhow!("empty list"));
+        };
+
+        let parent_entry = dbg!(treemap.get_mut(dbg!(parent_path))).context("Hello")?;
+        parent_entry.children.push(curr_path.to_owned());
+        parent_entry.size += size;
+        dbg!(parent_entry, parent_path);
+        dbg!(&treemap);
+
+        do_update_parents(treemap, parent_path, size)
     }
 
     // let len = pos.len() - 1;
@@ -65,7 +93,7 @@ impl Into<Dir> for LsDir {
     fn into(self) -> Dir {
         Dir {
             // take the name from self or the last element of curr_pos
-            size: self.files.iter().fold(0u64, |acc, item| acc + item.size) as usize,
+            size: self.files.iter().fold(0u64, |acc, item| acc + item.size),
             files: self.files,
             children: Default::default(),
         }
