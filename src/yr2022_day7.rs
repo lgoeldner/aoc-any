@@ -1,4 +1,7 @@
-use std::{any, fmt};
+use std::{
+    borrow::BorrowMut, cell::RefCell, collections::HashMap, default, fs::DirBuilder, ops::DerefMut,
+    rc::Rc,
+};
 
 use anyhow::{anyhow, Ok};
 
@@ -8,71 +11,108 @@ pub fn part1() -> anyhow::Result<()> {
     todo!()
 }
 
+// #[derive(Default, Debug)]
+// enum Dir {
+//     Node(Node),
+//     #[default]
+//     Nil,
+// }
+
+#[derive(Debug, Default)]
+struct Dir {
+    size: usize,
+    files: Vec<File>,
+    children: Vec<String>,
+}
+
+fn build_treemap(mut inp: Vec<Command>) {
+    let mut treemap = HashMap::from([(vec!["/".to_string()], Dir::default())]);
+    let mut curr_pos = vec!["/".to_string()];
+    for cmd in inp {
+        // eprintln!("{:?}, {:?}, {:?}", cmd, &treemap, &curr_pos);
+        match cmd {
+            Command::Cd { to } => match to {
+                CdTarget::Name(target_name) => curr_pos.push(target_name),
+                CdTarget::Root => drop(curr_pos.drain(1..)),
+                CdTarget::Parent => {
+                    curr_pos.pop().unwrap();
+                    if curr_pos.is_empty() {
+                        curr_pos.push("/".to_string())
+                    }
+                }
+            },
+            Command::Ls { result } => {
+                for dir in result {
+                    treemap.insert(curr_pos.clone(), dir.into());
+                    update_parents(&mut treemap, );
+                    dbg!(&treemap);
+                }
+            }
+        }
+    }
+}
+
+fn update_parents(treemap: &mut HashMap<Vec<String>, Dir>, pos: &Vec<String>, size: u64) {
+    fn do_update_parents(treemap: &mut HashMap<Vec<String>, Dir>, pos: &[String], size: u64) {
+        let [head, tail @ ..] = pos else { return };
+    }
+
+    // let len = pos.len() - 1;
+    do_update_parents(treemap, pos, size)
+}
+
+impl Into<Dir> for LsDir {
+    fn into(self) -> Dir {
+        Dir {
+            // take the name from self or the last element of curr_pos
+            size: self.files.iter().fold(0u64, |acc, item| acc + item.size) as usize,
+            files: self.files,
+            children: Default::default(),
+        }
+    }
+}
+
 fn parse(inp: &str) -> anyhow::Result<Vec<Command>> {
     Ok(inp
         .split("$ ")
         .skip(1)
         .map(|cmd| match &cmd[..2] {
             "cd" => Command::Cd {
-                target: parse_cd(&cmd[3..]),
+                to: parse_cd(&cmd[3..]),
             },
             "ls" => Command::Ls {
-                result: parse_ls(&cmd[3..]).unwrap(),
+                result: parse_ls(&cmd[3..]),
             },
             _ => panic!("unknown command"),
         })
         .collect::<Vec<_>>())
-
-    // for cmd in  {
-    //     let cmd = match &cmd[..2] {
-    //         "cd" => Command::Cd {
-    //             target: parse_cd(&cmd[3..]),
-    //         },
-    //         "ls" => Command::Ls {
-    //             out: parse_ls(&cmd[3..]),
-    //         },
-    //         _ => panic!("unknown command"),
-    //     };
-    //     dbg!(cmd);
-    // }
-
-    // dbg!(inp.split("$ ").skip(1).collect::<Vec<&str>>());
 }
 
-fn parse_ls(cmd: &str) -> anyhow::Result<Vec<LsDir>> {
-    "dir a
-    14848514 b.txt
-    8504156 c.dat
-    dir d";
+fn parse_ls(cmd: &str) -> Vec<LsDir> {
     cmd.split("dir ")
-        // .skip(1)
         .filter(|line| !line.is_empty())
         .map(|cmd| {
-            let mut lines = cmd.lines().peekable();
-            let name = if let Some(line) = lines.peek() {
-                if line.starts_with("dir") {
-                    lines.next().unwrap().to_owned()
-                } else {
-                    "".to_owned()
+            let mut lines = cmd.lines().map(|line| line.trim()).peekable();
+            let mut name: Option<String> = None;
+            if let Some(line) = lines.peek() {
+                if line.len() == 1 {
+                    name = Some(lines.next().unwrap().to_owned());
                 }
-            } else {
-                "".to_owned()
-            };
+            }
 
             let files = lines
                 .map(|line| {
-                    let Some((size, name)) = line.split_once(' ') else {
-                        panic!()
-                    };
-                    Ok(File {
-                        size: size.parse()?,
-                        name: name.to_string(),
-                    })
+                    let (size, name) = line.split_once(' ').unwrap();
+                    File {
+                        size: size.parse().unwrap(),
+                        name: name.to_owned(),
+                    }
                 })
-                .collect::<anyhow::Result<Vec<_>>>()?;
-            Ok(LsDir { files, name })
+                .collect();
+
+            LsDir { files, name }
         })
-        .collect::<anyhow::Result<Vec<_>>>()
+        .collect::<Vec<_>>()
 }
 
 fn parse_cd(cmd: &str) -> CdTarget {
@@ -86,7 +126,7 @@ fn parse_cd(cmd: &str) -> CdTarget {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Command {
     Ls { result: Vec<LsDir> },
-    Cd { target: CdTarget },
+    Cd { to: CdTarget },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -98,14 +138,14 @@ enum CdTarget {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct LsDir {
-    name: String,
+    name: Option<String>,
     files: Vec<File>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct File {
     name: String,
-    size: u32,
+    size: u64,
 }
 
 fn get_data() -> &'static str {
@@ -115,6 +155,6 @@ fn get_data() -> &'static str {
 #[test]
 fn test_part1() -> anyhow::Result<()> {
     let _parsed = dbg!(parse(get_data())?);
-
+    let x = build_treemap(_parsed);
     todo!()
 }

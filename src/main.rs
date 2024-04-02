@@ -13,7 +13,7 @@ fn main() {
 fn timeit<F, R>(f: F) -> R
 where
     F: Fn() -> R,
-    R: Debug
+    R: Debug,
 {
     let time = Instant::now();
     let result = f();
