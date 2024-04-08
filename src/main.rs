@@ -8,6 +8,8 @@ fn main() {
     timeit(yr2022_day4::part2).unwrap();
 
     timeit(yr2022_day7::part1).unwrap();
+
+    timeit(yr2022_day8::part1).unwrap();
 }
 
 fn timeit<F, R>(f: F) -> R
@@ -24,3 +26,4 @@ where
 mod yr2022_day3;
 mod yr2022_day4;
 mod yr2022_day7;
+mod yr2022_day8;
