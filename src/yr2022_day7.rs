@@ -1,31 +1,60 @@
-use std::{
-    borrow::BorrowMut, cell::RefCell, collections::HashMap, default, fs::DirBuilder, ops::DerefMut,
-    rc::Rc,
-};
+use std::{collections::HashMap, vec};
 
-use anyhow::{anyhow, Context, Ok};
+use anyhow::Ok;
 
-pub fn part1() -> anyhow::Result<()> {
+pub fn part1() -> anyhow::Result<u64> {
     let parsed = parse(get_data())?;
-
-    todo!()
+    let map = build_treemap(parsed);
+    Ok(sum_dir_size_under(map, 100000))
 }
 
-// #[derive(Default, Debug)]
-// enum Dir {
-//     Node(Node),
-//     #[default]
-//     Nil,
-// }
+pub fn part2() -> anyhow::Result<u64> {
+    let parsed = parse(get_data())?;
+    let map = build_treemap(parsed);
+    Ok(smalles_del_to_free(map))
+}
 
-#[derive(Debug, Default)]
+fn smalles_del_to_free(treemap: HashMap<Vec<String>, Dir>) -> u64 {
+    let root = &treemap[&vec!["/".into()]];
+    const DISK_SPACE: u64 = 70_000_000;
+    const SPACE_REQ: u64 = 30_000_000;
+    let space_available = DISK_SPACE - root.size;
+    let needs_deleted = SPACE_REQ - space_available;
+
+    treemap
+        .values()
+        .filter_map(|dir| {
+            if dir.size >= needs_deleted {
+                Some(dir.size)
+            } else {
+                None
+            }
+        })
+        .min()
+        .unwrap()
+}
+
+fn sum_dir_size_under(treemap: HashMap<Vec<String>, Dir>, cap: u64) -> u64 {
+    treemap
+        .values()
+        .filter_map(|dir| {
+            if dir.size <= cap {
+                Some(dir.size)
+            } else {
+                None
+            }
+        })
+        .sum()
+}
+
+#[derive(Debug, Default, Clone)]
 struct Dir {
     size: u64,
     files: Vec<File>,
-    children: Vec<String>,
+    // children: Vec<String>,
 }
 
-fn build_treemap(mut inp: Vec<Command>) {
+fn build_treemap(inp: Vec<Command>) -> HashMap<Vec<String>, Dir> {
     let mut treemap = HashMap::from([(vec!["/".to_string()], Dir::default())]);
     let mut curr_pos = vec!["/".to_string()];
     for cmd in inp {
@@ -41,16 +70,32 @@ fn build_treemap(mut inp: Vec<Command>) {
                 }
             },
             Command::Ls { result } => {
+                use std::collections::hash_map::Entry;
                 for dir in result {
-                    let new_dir: Dir = dir.into();
-                    update_parents(&mut treemap, &curr_pos, new_dir.size);
-                    treemap.insert(curr_pos.clone(), new_dir);
-
-                    // dbg!(&treemap);
+                    let new_dir: Dir = dir.clone().into();
+                    // merge new dir and maybe old one
+                    let dir_entry = treemap.entry(curr_pos.clone());
+                    match dir_entry {
+                        Entry::Vacant(vacant) => {
+                            vacant.insert(new_dir.clone());
+                        }
+                        Entry::Occupied(mut occ) => {
+                            let old = occ.get();
+                            let mut new = new_dir.clone();
+                            new.files.append(&mut old.files.clone());
+                            occ.insert(Dir {
+                                files: new.files,
+                                size: old.size + new.size,
+                            });
+                        }
+                    }
+                    // treemap.insert(curr_pos.clone(), new_dir.clone());
+                    let _ = update_parents(&mut treemap, &curr_pos, new_dir.size);
                 }
             }
         }
     }
+    treemap
 }
 
 fn update_parents(
@@ -58,44 +103,35 @@ fn update_parents(
     pos: &Vec<String>,
     size: u64,
 ) -> anyhow::Result<()> {
-    fn do_update_parents(
-        treemap: &mut HashMap<Vec<String>, Dir>,
-        pos: &[String],
-        size: u64,
-    ) -> anyhow::Result<()> {
-        if pos.is_empty() {
-            return Ok(());
-        }
-        // if pos.len() == 1 {
-        //     // reached root
-        //     let root_node = dbg!(treemap.get(["/".to_owned()].as_slice()).context(""))?;
-        // } else
+    // register in the parent element as a child
+    // and propagate size through every parent up to root
 
-        let [parent_path @ .., curr_path] = dbg!(pos) else {
-            dbg!("irrefutable reached", pos);
-            return Err(anyhow!("empty list"));
-        };
+    // parent
+    //     .children
+    //     .push(new_dir.name.clone().unwrap_or("".to_owned()));
+    //dbg!(pos, &parent, new_dir);
 
-        let parent_entry = dbg!(treemap.get_mut(dbg!(parent_path))).context("Hello")?;
-        parent_entry.children.push(curr_path.to_owned());
-        parent_entry.size += size;
-        dbg!(parent_entry, parent_path);
-        dbg!(&treemap);
+    let len = pos.len();
 
-        do_update_parents(treemap, parent_path, size)
+    //let mut pos = pos.clone();
+
+    for i in (0..len).rev().skip(1) {
+        let curr_pos = &pos[..i + 1];
+        let curr_pos = treemap.get_mut(curr_pos).unwrap();
+        curr_pos.size += size;
     }
-
-    // let len = pos.len() - 1;
-    do_update_parents(treemap, pos, size)
+    // let root = &treemap[&vec!["/".into()]];
+    let parent = treemap.get_mut(pos).unwrap();
+    // println!("update_parents@69: {pos:?}: {parent:#?} ");
+    Ok(())
 }
 
-impl Into<Dir> for LsDir {
-    fn into(self) -> Dir {
+impl From<LsDir> for Dir {
+    fn from(val: LsDir) -> Self {
         Dir {
             // take the name from self or the last element of curr_pos
-            size: self.files.iter().fold(0u64, |acc, item| acc + item.size),
-            files: self.files,
-            children: Default::default(),
+            size: val.files.iter().fold(0u64, |acc, item| acc + item.size),
+            files: val.files,
         }
     }
 }
@@ -118,19 +154,32 @@ fn parse(inp: &str) -> anyhow::Result<Vec<Command>> {
 
 fn parse_ls(cmd: &str) -> Vec<LsDir> {
     cmd.split("dir ")
+        // .skip(1)
         .filter(|line| !line.is_empty())
         .map(|cmd| {
-            let mut lines = cmd.lines().map(|line| line.trim()).peekable();
+            let mut lines = cmd
+                .lines()
+                .map(|line| line.trim())
+                // .inspect(|item| {
+                //     let _ = dbg!(item);
+                // })
+                .peekable();
             let mut name: Option<String> = None;
             if let Some(line) = lines.peek() {
-                if line.len() == 1 {
+                if !line.is_empty() && line.chars().next().unwrap().is_alphabetic() {
                     name = Some(lines.next().unwrap().to_owned());
+                } else if line.is_empty() {
+                    lines.next().unwrap();
                 }
             }
 
             let files = lines
-                .map(|line| {
-                    let (size, name) = line.split_once(' ').unwrap();
+                .enumerate()
+                .map(|(i, line)| {
+                    let (size, name) = line.split_once(' ').unwrap_or_else(|| {
+                        //  eprintln!("@l {i}: {line}");
+                        panic!();
+                    });
                     File {
                         size: size.parse().unwrap(),
                         name: name.to_owned(),
@@ -177,12 +226,25 @@ struct File {
 }
 
 fn get_data() -> &'static str {
-    include_str!("../inputs/day7-test.txt")
+    #[cfg(test)]
+    return include_str!("../inputs/day7-test.txt");
+
+    #[cfg(not(test))]
+    return include_str!("../inputs/day7-inp.txt");
 }
 
 #[test]
 fn test_part1() -> anyhow::Result<()> {
-    let _parsed = dbg!(parse(get_data())?);
-    let x = build_treemap(_parsed);
-    todo!()
+    let parsed = parse(get_data())?;
+    assert_eq!(sum_dir_size_under(build_treemap(parsed), 100000), 95437);
+
+    Ok(())
+}
+
+#[test]
+fn test_part2() -> anyhow::Result<()> {
+    let parsed = parse(get_data())?;
+    assert_eq!(smalles_del_to_free(build_treemap(parsed)), 24933642);
+
+    Ok(())
 }
