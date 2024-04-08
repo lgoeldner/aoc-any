@@ -11,7 +11,7 @@ fn main() {
     timeit(yr2022_day7::part1).unwrap();
 
     timeit(yr2022_day8::part1).unwrap();
-    time_dbg(yr2022_day7::part1).unwrap();
+	time_dbg(yr2022_day7::part1).unwrap();
     time_dbg(yr2022_day7::part2).unwrap();
 =======
     
