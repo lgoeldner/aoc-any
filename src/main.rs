@@ -7,15 +7,12 @@ fn main() {
     time_dbg(yr2022_day4::part1).unwrap();
     time_dbg(yr2022_day4::part2).unwrap();
 
-<<<<<<< HEAD
-    timeit(yr2022_day7::part1).unwrap();
+    time_dbg(yr2022_day7::part1).unwrap();
 
-    timeit(yr2022_day8::part1).unwrap();
-	time_dbg(yr2022_day7::part1).unwrap();
+    time_dbg(yr2022_day7::part1).unwrap();
     time_dbg(yr2022_day7::part2).unwrap();
-=======
-    
->>>>>>> 81305394336dde7c10e482e422ed2dea74de5403
+
+    time_dbg(yr2022_day8::part1).unwrap();
 }
 
 fn time_dbg<R: Debug>(f: impl Fn() -> R) -> R {

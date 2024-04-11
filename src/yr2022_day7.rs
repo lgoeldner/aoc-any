@@ -103,26 +103,14 @@ fn update_parents(
     pos: &Vec<String>,
     size: u64,
 ) -> anyhow::Result<()> {
-    // register in the parent element as a child
-    // and propagate size through every parent up to root
-
-    // parent
-    //     .children
-    //     .push(new_dir.name.clone().unwrap_or("".to_owned()));
-    //dbg!(pos, &parent, new_dir);
-
     let len = pos.len();
-
-    //let mut pos = pos.clone();
 
     for i in (0..len).rev().skip(1) {
         let curr_pos = &pos[..i + 1];
         let curr_pos = treemap.get_mut(curr_pos).unwrap();
         curr_pos.size += size;
     }
-    // let root = &treemap[&vec!["/".into()]];
-    let parent = treemap.get_mut(pos).unwrap();
-    // println!("update_parents@69: {pos:?}: {parent:#?} ");
+
     Ok(())
 }
 
@@ -175,7 +163,7 @@ fn parse_ls(cmd: &str) -> Vec<LsDir> {
 
             let files = lines
                 .enumerate()
-                .map(|(i, line)| {
+                .map(|(_, line)| {
                     let (size, name) = line.split_once(' ').unwrap_or_else(|| {
                         //  eprintln!("@l {i}: {line}");
                         panic!();
