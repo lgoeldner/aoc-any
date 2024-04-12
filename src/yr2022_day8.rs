@@ -1,4 +1,4 @@
-use std::io::stdin;
+use std::ops::BitAnd;
 
 use itertools::Itertools;
 
@@ -8,24 +8,76 @@ pub fn part1() -> anyhow::Result<u32> {
     let sum1: u32 = data.0[1..data.0.len() - 1]
         .iter()
         .map(|line| visible_in_line(&line))
-        .sum::<u32>() + data.0[0].len() as u32 * 2;
-	let data = Data(transpose2(data.0));
-	let sum2: u32 = data.0[1..data.0.len() - 1]
+        .sum::<u32>()
+        + data.0[0].len() as u32 * 2;
+    let data = Data(transpose2(data.0));
+    let sum2: u32 = data.0[1..data.0.len() - 1]
         .iter()
         .map(|line| visible_in_line(&line))
-        .sum::<u32>() + data.0[0].len() as u32 * 2;
-	dbg!(sum1, sum2);
+        .sum::<u32>()
+        + data.0[0].len() as u32 * 2;
+    let x = to_visible_treegrid(data.0);
+	dbg!(x);
+    dbg!(sum1, sum2);
     todo!()
 }
 
-struct TreeVis(u32, bool);
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct TreeVis(u8, bool);
 
-fn to_visible_treegrid(data: &[Tree]) -> Vec<Vec<TreeVis>> {
-	todo!()
+impl std::fmt::Debug for TreeVis {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{} {}", self.0, if self.1 { "#" } else { "." })
+	}
+}
+
+fn to_visible_treegrid(data: Vec<Vec<Tree>>) -> Vec<Vec<TreeVis>> {
+    let data1 = data
+        .iter()
+        .map(|line| to_visible_treeline(line))
+        .collect::<Vec<Vec<TreeVis>>>();
+
+    let data2 = transpose2(data)
+        .iter()
+        .map(|line| to_visible_treeline(&line))
+        .collect::<Vec<Vec<TreeVis>>>();
+    dbg!(data1, data2);
+    todo!()
+}
+
+impl BitAnd for TreeVis {
+    type Output = Self;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        todo!()
+    }
+}
+
+#[test]
+fn test_visible_treeline() {
+    let data = &parse("1233471").0[0];
+    assert_eq!(
+        to_visible_treeline(data)
+            .iter()
+            .fold(0, |acc, x| acc + x.1 as u32),
+        5
+    )
+}
+
+fn to_visible_treeline(data: &[Tree]) -> Vec<TreeVis> {
+    data.iter()
+        .scan(0, |acc, tree| {
+            if tree.0 > *acc {
+                *acc = tree.0;
+                Some(TreeVis(tree.0, true))
+            } else {
+                Some(TreeVis(tree.0, false))
+            }
+        })
+        .collect()
 }
 
 fn visible_in_line(data: &[Tree]) -> u32 {
-	println!();
+    println!();
     // iterate over the data in pairs, from front to back and in reverse
     // at the same time
     // keeping track of the maximum height for either
@@ -35,13 +87,13 @@ fn visible_in_line(data: &[Tree]) -> u32 {
             // first and last tree are max, sum is 0
             ((data[0].0, data.last().unwrap().0), 0),
             |((fwd_max, rev_max), sum), (fwd, rev)| {
-				// printing
-				match (fwd.0 > fwd_max, rev.0 > rev_max) {
-					(true, _) | (_, true) => {
-						print!("X")
-					}
-					_ => print!("0")
-				}
+                // printing
+                match (fwd.0 > fwd_max, rev.0 > rev_max) {
+                    (true, _) | (_, true) => {
+                        print!("X")
+                    }
+                    _ => print!("0"),
+                }
                 // check max for each, update sum accordingly
                 match (fwd.0 > fwd_max, rev.0 > rev_max) {
                     (true, true) => ((fwd.0, rev.0), sum + 2),
@@ -56,7 +108,7 @@ fn visible_in_line(data: &[Tree]) -> u32 {
 }
 /// https://stackoverflow.com/a/64499219/24086138
 fn transpose2<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
-    assert!(!v.is_empty());
+    debug_assert!(!v.is_empty());
     let len = v[0].len();
     let mut iters = v.into_iter().map(|n| n.into_iter()).collect::<Vec<_>>();
     (0..len)
@@ -73,7 +125,7 @@ struct Tree(u8);
 
 impl std::fmt::Debug for Tree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.0)   
+        write!(f, "{}", self.0)
     }
 }
 
@@ -106,7 +158,7 @@ impl std::fmt::Debug for Data {
 
 fn parse(data: &str) -> Data {
     data.lines()
-        .map(|line| dbg!(line.chars().map(<Tree>::from).collect()))
+        .map(|line| line.chars().map(<Tree>::from).collect())
         .collect::<Vec<Vec<Tree>>>()
         .into()
 }
