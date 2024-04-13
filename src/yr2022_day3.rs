@@ -15,7 +15,7 @@ fn char_to_prio(c: char) -> u32 {
 fn l_r_diff(data: &Data1) -> char {
     let set1 = data.left.chars().collect::<HashSet<_>>();
     let set2 = data.right.chars().collect::<HashSet<_>>();
-    *set1.intersection(&set2).collect::<Vec<_>>()[0]
+    *set1.intersection(&set2).next().unwrap()
 }
 
 fn read_input() -> String {

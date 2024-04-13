@@ -1,28 +1,14 @@
-use std::{
-    ops::{BitAnd, BitOr},
-    vec,
-};
+use std::ops::BitOr;
 
 use itertools::Itertools;
 
 pub fn part1() -> anyhow::Result<u32> {
-    let data = dbg!(parse(get_data()));
+    let data = parse(get_data());
 
-    let sum1: u32 = data.0[1..data.0.len() - 1]
-        .iter()
-        .map(|line| visible_in_line(&line))
-        .sum::<u32>()
-        + data.0[0].len() as u32 * 2;
-    let data = Data(transpose2(data.0));
-    let sum2: u32 = data.0[1..data.0.len() - 1]
-        .iter()
-        .map(|line| visible_in_line(&line))
-        .sum::<u32>()
-        + data.0[0].len() as u32 * 2;
-    let x = to_visible_treegrid(data.0);
-    dbg!(x);
-    dbg!(sum1, sum2);
-    todo!()
+    let x = to_visible_treecount(data.0);
+    
+	Ok(x)
+    // todo!()
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -34,18 +20,53 @@ impl std::fmt::Debug for TreeVis {
     }
 }
 
-fn to_visible_treegrid(data: Vec<Vec<Tree>>) -> Vec<Vec<TreeVis>> {
-    let data1 = data
+fn to_visible_treecount(data: Vec<Vec<Tree>>) -> u32 {
+    let mut data1 = data
         .iter()
         .map(|line| to_visible_treeline(line))
         .collect::<Vec<Vec<TreeVis>>>();
 
     let data2 = transpose2(data)
         .iter()
-        .map(|line| to_visible_treeline(&line))
+        .map(|line| to_visible_treeline(line))
         .collect::<Vec<Vec<TreeVis>>>();
-    dbg!(data1, data2);
-    todo!()
+
+    // transpose data2 again and join with data1
+    let data2 = transpose2(data2);
+
+    for (row1, row2) in data1.iter_mut().zip(data2.iter()) {
+        for (lcell, rcell) in row1.iter_mut().zip(row2.iter()) {
+            lcell.1 |= rcell.1;
+        }
+    }
+
+    let data_width = data1[0].len();
+    let inner = data1[1..data1.len() - 1]
+        .iter()
+        .map(|line| &line[1..data_width - 1]);
+
+    #[cfg(debug_assertions)]
+    dbg_vistreegrid(&inner.clone().collect::<Vec<_>>());
+
+    let sum: u32 = inner
+        .map(|line| line.iter().fold(0, |sum, item| sum + item.1 as u32))
+        .sum::<u32>()
+        + data1[0].len() as u32 * 2
+        + data1.len() as u32 * 2
+        - 4;
+
+    sum
+}
+
+#[allow(unused)]
+fn dbg_vistreegrid(inp: &[impl AsRef<[TreeVis]>]) {
+    eprintln!("<<===>>");
+    for line in inp {
+        for cell in line.as_ref() {
+            eprint!(" {:?} ", cell);
+        }
+        eprintln!()
+    }
 }
 
 impl BitOr for TreeVis {
@@ -67,8 +88,8 @@ fn test_visible_treeline() {
 }
 
 fn to_visible_treeline(inp: &[Tree]) -> Vec<TreeVis> {
-	fn traverse<'a>(iter: impl Iterator<Item = &'a Tree>) -> Vec<TreeVis> {
-		iter.scan(0, |max_treeheight, tree| {
+    fn traverse<'a>(iter: impl Iterator<Item = &'a Tree>) -> Vec<TreeVis> {
+        iter.scan(0, |max_treeheight, tree| {
             if tree.0 > *max_treeheight {
                 *max_treeheight = tree.0;
                 Some(TreeVis(tree.0, true))
@@ -77,11 +98,11 @@ fn to_visible_treeline(inp: &[Tree]) -> Vec<TreeVis> {
             }
         })
         .collect::<Vec<_>>()
-	}
+    }
 
-	let data = traverse(inp.iter());
-	let data2 = traverse(inp.iter().rev());
-	
+    let data = traverse(inp.iter());
+    let data2 = traverse(inp.iter().rev());
+
     let zipped = data
         .iter()
         .zip(data2.iter())
@@ -94,39 +115,9 @@ fn to_visible_treeline(inp: &[Tree]) -> Vec<TreeVis> {
             }
         })
         .collect::<Vec<_>>();
-    dbg!(zipped)
+    zipped
 }
 
-fn visible_in_line(data: &[Tree]) -> u32 {
-    println!();
-    // iterate over the data in pairs, from front to back and in reverse
-    // at the same time
-    // keeping track of the maximum height for either
-    data.iter()
-        .zip(data.iter().rev())
-        .fold(
-            // first and last tree are max, sum is 0
-            ((data[0].0, data.last().unwrap().0), 0),
-            |((fwd_max, rev_max), sum), (fwd, rev)| {
-                // printing
-                match (fwd.0 > fwd_max, rev.0 > rev_max) {
-                    (true, _) | (_, true) => {
-                        print!("X")
-                    }
-                    _ => print!("0"),
-                }
-                // check max for each, update sum accordingly
-                match (fwd.0 > fwd_max, rev.0 > rev_max) {
-                    (true, true) => ((fwd.0, rev.0), sum + 2),
-                    (true, false) => ((fwd.0, rev_max), sum + 1),
-                    (false, true) => ((fwd_max, rev.0), sum + 1),
-                    (false, false) => ((fwd_max, rev_max), sum),
-                }
-            },
-        )
-        // get the maximum
-        .1
-}
 /// https://stackoverflow.com/a/64499219/24086138
 fn transpose2<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
     debug_assert!(!v.is_empty());

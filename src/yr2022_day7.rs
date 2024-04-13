@@ -100,7 +100,7 @@ fn build_treemap(inp: Vec<Command>) -> HashMap<Vec<String>, Dir> {
 
 fn update_parents(
     treemap: &mut HashMap<Vec<String>, Dir>,
-    pos: &Vec<String>,
+    pos: &[String],
     size: u64,
 ) -> anyhow::Result<()> {
     let len = pos.len();
