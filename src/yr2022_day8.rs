@@ -1,4 +1,7 @@
-use std::ops::BitAnd;
+use std::{
+    ops::{BitAnd, BitOr},
+    vec,
+};
 
 use itertools::Itertools;
 
@@ -17,7 +20,7 @@ pub fn part1() -> anyhow::Result<u32> {
         .sum::<u32>()
         + data.0[0].len() as u32 * 2;
     let x = to_visible_treegrid(data.0);
-	dbg!(x);
+    dbg!(x);
     dbg!(sum1, sum2);
     todo!()
 }
@@ -26,9 +29,9 @@ pub fn part1() -> anyhow::Result<u32> {
 struct TreeVis(u8, bool);
 
 impl std::fmt::Debug for TreeVis {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{} {}", self.0, if self.1 { "#" } else { "." })
-	}
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.0, if self.1 { "#" } else { "." })
+    }
 }
 
 fn to_visible_treegrid(data: Vec<Vec<Tree>>) -> Vec<Vec<TreeVis>> {
@@ -45,10 +48,10 @@ fn to_visible_treegrid(data: Vec<Vec<Tree>>) -> Vec<Vec<TreeVis>> {
     todo!()
 }
 
-impl BitAnd for TreeVis {
-    type Output = Self;
-    fn bitand(self, rhs: Self) -> Self::Output {
-        todo!()
+impl BitOr for TreeVis {
+    type Output = bool;
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self.1 || rhs.1
     }
 }
 
@@ -63,17 +66,35 @@ fn test_visible_treeline() {
     )
 }
 
-fn to_visible_treeline(data: &[Tree]) -> Vec<TreeVis> {
-    data.iter()
-        .scan(0, |acc, tree| {
-            if tree.0 > *acc {
-                *acc = tree.0;
+fn to_visible_treeline(inp: &[Tree]) -> Vec<TreeVis> {
+	fn traverse<'a>(iter: impl Iterator<Item = &'a Tree>) -> Vec<TreeVis> {
+		iter.scan(0, |max_treeheight, tree| {
+            if tree.0 > *max_treeheight {
+                *max_treeheight = tree.0;
                 Some(TreeVis(tree.0, true))
             } else {
                 Some(TreeVis(tree.0, false))
             }
         })
-        .collect()
+        .collect::<Vec<_>>()
+	}
+
+	let data = traverse(inp.iter());
+	let data2 = traverse(inp.iter().rev());
+	
+    let zipped = data
+        .iter()
+        .zip(data2.iter())
+        .map(|(lhs, rhs)| {
+            // assert_eq!(lhs.0, rhs.0);
+            if lhs.1 || rhs.1 {
+                TreeVis(lhs.0, true)
+            } else {
+                *lhs
+            }
+        })
+        .collect::<Vec<_>>();
+    dbg!(zipped)
 }
 
 fn visible_in_line(data: &[Tree]) -> u32 {
