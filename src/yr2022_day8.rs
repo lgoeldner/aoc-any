@@ -6,29 +6,44 @@ pub fn part1() -> anyhow::Result<u32> {
     let data = parse(get_data());
 
     let x = to_visible_treecount(data.0);
-    
-	Ok(x)
+
+    Ok(x)
     // todo!()
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct TreeVis(u8, bool);
+#[derive(Clone, PartialEq, Eq)]
+struct TreeVis(u8, bool, Reason);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+enum Reason {
+    Horizontal,
+    Vertical,
+    HorizontalRev,
+    VerticalRev,
+    Two(Box<(Reason, Reason)>),
+}
 
 impl std::fmt::Debug for TreeVis {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.0, if self.1 { "#" } else { "." })
+        write!(
+            f,
+            "[{} {} R: {:?}]",
+            self.0,
+            if self.1 { "#" } else { "." },
+            self.2
+        )
     }
 }
 
 fn to_visible_treecount(data: Vec<Vec<Tree>>) -> u32 {
     let mut data1 = data
         .iter()
-        .map(|line| to_visible_treeline(line))
+        .map(|line| to_visible_treeline(line, true))
         .collect::<Vec<Vec<TreeVis>>>();
 
     let data2 = transpose2(data)
         .iter()
-        .map(|line| to_visible_treeline(line))
+        .map(|line| to_visible_treeline(dbg!(line), false))
         .collect::<Vec<Vec<TreeVis>>>();
 
     // transpose data2 again and join with data1
@@ -37,10 +52,16 @@ fn to_visible_treecount(data: Vec<Vec<Tree>>) -> u32 {
     for (row1, row2) in data1.iter_mut().zip(data2.iter()) {
         for (lcell, rcell) in row1.iter_mut().zip(row2.iter()) {
             lcell.1 |= rcell.1;
+            if rcell.1 {
+                lcell.2 = Reason::Two(Box::new((lcell.2.clone(), rcell.2.clone())));
+            }
         }
     }
 
     let data_width = data1[0].len();
+
+    #[cfg(debug_assertions)]
+    dbg_vistreegrid(&data1);
     let inner = data1[1..data1.len() - 1]
         .iter()
         .map(|line| &line[1..data_width - 1]);
@@ -53,7 +74,7 @@ fn to_visible_treecount(data: Vec<Vec<Tree>>) -> u32 {
         .sum::<u32>()
         + data1[0].len() as u32 * 2
         + data1.len() as u32 * 2
-        - 4;
+        - 4; // account for corners
 
     sum
 }
@@ -76,32 +97,58 @@ impl BitOr for TreeVis {
     }
 }
 
-#[test]
-fn test_visible_treeline() {
-    let data = &parse("1233471").0[0];
-    assert_eq!(
-        to_visible_treeline(data)
-            .iter()
-            .fold(0, |acc, x| acc + x.1 as u32),
-        5
-    )
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    #[test]
+    fn test_visible_treeline() {
+        fn test((inp, expected): &(&str, u32)) {
+            let data = &parse(inp).0[0];
+            dbg!(to_visible_treeline(data, false));
+            // assert_eq!(
+            //     to_visible_treeline(data, true)
+            //         .iter()
+            //         .fold(0, |acc, x| acc + x.1 as u32),
+            //     expected
+            // )
+        }
+
+        [("32633", 0), ("05535", 0)].iter().for_each(test);
+		panic!()
+    }
+
+    #[test]
+    fn edgecases() {
+        fn test((inp, expected): &(&str, u32)) {
+            let data = parse(inp);
+            assert_eq!(to_visible_treecount(data.0), *expected);
+        }
+
+        [].iter().for_each(test)
+    }
 }
 
-fn to_visible_treeline(inp: &[Tree]) -> Vec<TreeVis> {
-    fn traverse<'a>(iter: impl Iterator<Item = &'a Tree>) -> Vec<TreeVis> {
+fn to_visible_treeline(inp: &[Tree], horizontal: bool) -> Vec<TreeVis> {
+    fn traverse<'a>(iter: impl Iterator<Item = &'a Tree>, reason: Reason) -> Vec<TreeVis> {
         iter.scan(0, |max_treeheight, tree| {
             if tree.0 > *max_treeheight {
                 *max_treeheight = tree.0;
-                Some(TreeVis(tree.0, true))
+                Some(TreeVis(tree.0, true, reason.clone()))
             } else {
-                Some(TreeVis(tree.0, false))
+                Some(TreeVis(tree.0, false, reason.clone()))
             }
         })
         .collect::<Vec<_>>()
     }
 
-    let data = traverse(inp.iter());
-    let data2 = traverse(inp.iter().rev());
+    let (reason1, reason2) = match horizontal {
+        true => (Reason::Horizontal, Reason::HorizontalRev),
+        false => (Reason::Vertical, Reason::VerticalRev),
+    };
+
+    let data = traverse(inp.iter(), reason1);
+    let data2 = traverse(inp.iter().rev(), reason2);
 
     let zipped = data
         .iter()
@@ -109,9 +156,18 @@ fn to_visible_treeline(inp: &[Tree]) -> Vec<TreeVis> {
         .map(|(lhs, rhs)| {
             // assert_eq!(lhs.0, rhs.0);
             if lhs.1 || rhs.1 {
-                TreeVis(lhs.0, true)
+                TreeVis(
+                    lhs.0,
+                    true,
+                    match (lhs.1, rhs.1) {
+                        (true, true) => Reason::Two(Box::new((lhs.2.clone(), rhs.2.clone()))),
+                        (false, true) => rhs.2.clone(),
+                        (true, false) => lhs.2.clone(),
+                        (false, false) => unreachable!(),
+                    },
+                )
             } else {
-                *lhs
+                lhs.clone()
             }
         })
         .collect::<Vec<_>>();
@@ -143,7 +199,10 @@ impl std::fmt::Debug for Tree {
 
 impl From<char> for Tree {
     fn from(val: char) -> Self {
-        Tree(val.to_digit(10).unwrap() as u8)
+        Tree(
+            val.to_digit(10)
+                .unwrap_or_else(|| panic!("invalid char: {}", val)) as u8,
+        )
     }
 }
 
