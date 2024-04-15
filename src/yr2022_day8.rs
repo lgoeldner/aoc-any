@@ -1,15 +1,33 @@
-use std::ops::BitOr;
+// use rayon::prelude::*;
+use std::{fmt::Display, ops::BitOr};
 
 use itertools::Itertools;
 
 pub fn part1() -> anyhow::Result<u32> {
-    let data = parse(get_data());
-
-    let x = to_visible_treecount(data.0);
-
-    Ok(x)
-    // todo!()
+    Ok(to_visible_treecount(parse(get_data()).0))
 }
+
+pub fn part2() -> u32 {
+    process_part2(parse(get_data()))
+}
+
+fn process_part2(data: Data) -> u32 {
+    let data = data.0;
+
+    // go over each tree, map it to its "scenic score"
+
+    todo!()
+}
+
+fn to_scenic_score(mut data: Vec<Vec<Tree>>) -> Vec<Vec<ScenicScore>> {
+    for (i, line) in data.iter().enumerate() {
+        for (j, tree) in line.iter().enumerate() {}
+    }
+
+    todo!()
+}
+
+struct ScenicScore(u32);
 
 #[derive(Clone, PartialEq, Eq)]
 struct TreeVis(u8, bool, Reason);
@@ -25,13 +43,17 @@ enum Reason {
 
 impl std::fmt::Debug for TreeVis {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "[{} {} R: {:?}]",
-            self.0,
-            if self.1 { "#" } else { "." },
-            self.2
-        )
+        if f.alternate() {
+            write!(
+                f,
+                "[{} {} R: {:?}]",
+                self.0,
+                if self.1 { "#" } else { "." },
+                self.2
+            )
+        } else {
+            write!(f, "[{} {}]", self.0, if self.1 { "#" } else { "." },)
+        }
     }
 }
 
@@ -43,14 +65,14 @@ fn to_visible_treecount(data: Vec<Vec<Tree>>) -> u32 {
 
     let data2 = transpose2(data)
         .iter()
-        .map(|line| to_visible_treeline(dbg!(line), false))
+        .map(|line| to_visible_treeline(line, false))
         .collect::<Vec<Vec<TreeVis>>>();
 
     // transpose data2 again and join with data1
     let data2 = transpose2(data2);
 
-    for (row1, row2) in data1.iter_mut().zip(data2.iter()) {
-        for (lcell, rcell) in row1.iter_mut().zip(row2.iter()) {
+    for (row1, row2) in zip(data1.iter_mut(), data2.iter()) {
+        for (lcell, rcell) in zip(row1.iter_mut(), row2.iter()) {
             lcell.1 |= rcell.1;
             if rcell.1 {
                 lcell.2 = Reason::Two(Box::new((lcell.2.clone(), rcell.2.clone())));
@@ -58,10 +80,13 @@ fn to_visible_treecount(data: Vec<Vec<Tree>>) -> u32 {
         }
     }
 
+    drop(data2);
+
     let data_width = data1[0].len();
 
-    #[cfg(debug_assertions)]
-    dbg_vistreegrid(&data1);
+    // #[cfg(debug_assertions)]
+    // dbg_vistreegrid(&data1);
+
     let inner = data1[1..data1.len() - 1]
         .iter()
         .map(|line| &line[1..data_width - 1]);
@@ -76,17 +101,27 @@ fn to_visible_treecount(data: Vec<Vec<Tree>>) -> u32 {
         + data1.len() as u32 * 2
         - 4; // account for corners
 
+    let y: Staticlist<u32, Staticlist<String, Staticlist<u32, ()>>> =
+        Staticlist(10, Staticlist("HELLO".to_owned(), Staticlist(10, ())));
+
+
     sum
 }
 
+struct Staticlist<A, B>(A, B);
+
 #[allow(unused)]
 fn dbg_vistreegrid(inp: &[impl AsRef<[TreeVis]>]) {
-    eprintln!("<<===>>");
-    for line in inp {
-        for cell in line.as_ref() {
-            eprint!(" {:?} ", cell);
+    const ENABLED: bool = true;
+    #[cfg(debug_assertions)]
+    if ENABLED {
+        eprintln!("<<===>>");
+        for line in inp {
+            for cell in line.as_ref() {
+                eprint!(" {:?} ", cell);
+            }
+            eprintln!()
         }
-        eprintln!()
     }
 }
 
@@ -94,38 +129,6 @@ impl BitOr for TreeVis {
     type Output = bool;
     fn bitor(self, rhs: Self) -> Self::Output {
         self.1 || rhs.1
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    #[test]
-    fn test_visible_treeline() {
-        fn test((inp, expected): &(&str, u32)) {
-            let data = &parse(inp).0[0];
-            dbg!(to_visible_treeline(data, false));
-            // assert_eq!(
-            //     to_visible_treeline(data, true)
-            //         .iter()
-            //         .fold(0, |acc, x| acc + x.1 as u32),
-            //     expected
-            // )
-        }
-
-        [("32633", 0), ("05535", 0)].iter().for_each(test);
-		panic!()
-    }
-
-    #[test]
-    fn edgecases() {
-        fn test((inp, expected): &(&str, u32)) {
-            let data = parse(inp);
-            assert_eq!(to_visible_treecount(data.0), *expected);
-        }
-
-        [].iter().for_each(test)
     }
 }
 
@@ -139,7 +142,7 @@ fn to_visible_treeline(inp: &[Tree], horizontal: bool) -> Vec<TreeVis> {
                 Some(TreeVis(tree.0, false, reason.clone()))
             }
         })
-        .collect::<Vec<_>>()
+        .collect()
     }
 
     let (reason1, reason2) = match horizontal {
@@ -148,11 +151,12 @@ fn to_visible_treeline(inp: &[Tree], horizontal: bool) -> Vec<TreeVis> {
     };
 
     let data = traverse(inp.iter(), reason1);
+
     let data2 = traverse(inp.iter().rev(), reason2);
 
     let zipped = data
         .iter()
-        .zip(data2.iter())
+        .zip(data2.iter().rev())
         .map(|(lhs, rhs)| {
             // assert_eq!(lhs.0, rhs.0);
             if lhs.1 || rhs.1 {
@@ -175,7 +179,7 @@ fn to_visible_treeline(inp: &[Tree], horizontal: bool) -> Vec<TreeVis> {
 }
 
 /// https://stackoverflow.com/a/64499219/24086138
-fn transpose2<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
+fn transpose2<T: Send + Sync>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
     debug_assert!(!v.is_empty());
     let len = v[0].len();
     let mut iters = v.into_iter().map(|n| n.into_iter()).collect::<Vec<_>>();
@@ -240,4 +244,9 @@ fn get_data() -> &'static str {
     } else {
         include_str!("../inputs/day8-inp.txt")
     }
+}
+
+/// utility function
+fn zip<A: Iterator, B: Iterator>(a: A, b: B) -> impl Iterator<Item = (A::Item, B::Item)> {
+    a.into_iter().zip(b.into_iter())
 }

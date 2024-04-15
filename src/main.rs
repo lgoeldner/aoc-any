@@ -13,6 +13,7 @@ fn main() {
     time_dbg(yr2022_day7::part2).unwrap();
 
     time_dbg(yr2022_day8::part1).unwrap();
+    time_dbg(yr2022_day8::part2);
 }
 
 fn time_dbg<R: Debug>(f: impl Fn() -> R) -> R {
