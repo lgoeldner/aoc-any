@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.81"
 itertools = "0.12"
-ndarray = "0.15.6"
+ndarray = { version = "0.15.6", features = ["rayon"] }
 rayon = "1.10.0"

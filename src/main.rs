@@ -17,8 +17,8 @@ fn main() {
     time_dbg("day7part2", yr2022_day7::part2).unwrap();
 
     time_dbg("day8part1", yr2022_day8::part1);
-    time_bench::<1000, _>("day8part1nd", yr2022_day8::part1nd);
-    time_bench::<100_000, _>("day8part2", yr2022_day8::part2);
+    time_bench::<10_000, _>("day8part1nd", yr2022_day8::part1nd);
+    time_bench::<10_000, _>("day8part2", yr2022_day8::part2);
 }
 
 fn time_dbg<R: Debug>(label: impl fmt::Display, f: impl Fn() -> R) -> R {
@@ -35,6 +35,7 @@ fn time_bench<const TIMES: usize, R>(
 where
     R: Send + Sync + Debug,
 {
+	let start = Instant::now();
     let times = (0..TIMES)
         .par_bridge()
         .map(|_| {
@@ -44,9 +45,10 @@ where
         })
         .collect::<Vec<_>>();
     eprintln!(
-        "Over {TIMES} Runs, average time Was: {:?}, elapsed runtime in function: {:?}",
+        "Over {TIMES} Runs, average time Was: {:?}, elapsed runtime in function: {:?}, actual elapsed: {:?}",
         times.iter().sum::<time::Duration>() / TIMES as u32,
-        times.iter().sum::<time::Duration>()
+        times.iter().sum::<time::Duration>(),
+		start.elapsed()
     );
     let result = f();
     eprintln!("{label} resulted in {result:?}",);

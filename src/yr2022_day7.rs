@@ -213,7 +213,7 @@ struct File {
     size: u64,
 }
 
-fn get_data() -> &'static str {
+const fn get_data() -> &'static str {
     #[cfg(test)]
     return include_str!("../inputs/day7-test.txt");
 

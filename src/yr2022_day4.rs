@@ -93,7 +93,7 @@ fn parse1(inp: &str) -> anyhow::Result<Vec<Range2>> {
 #[test]
 fn test_part1() -> anyhow::Result<()> {
     let data = include_str!("../inputs/day4-test.txt").to_owned();
-    dbg!(part1_withdata(data)).map(|_| ())?;
+    part1_withdata(data).map(|_| ())?;
 
     Ok(())
 }
