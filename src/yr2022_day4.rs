@@ -33,8 +33,8 @@ struct Range2 {
 impl Range2 {
     // checks if any of the two ranges is fully contained in the other
     fn contains_self(&self) -> bool {
-        let start_diff = self.fst.start as i64 - self.snd.start as i64;
-        let end_diff = self.fst.end as i64 - self.snd.end as i64;
+        let start_diff = i64::from(self.fst.start) - i64::from(self.snd.start);
+        let end_diff = i64::from(self.fst.end) - i64::from(self.snd.end);
         ((start_diff >= 0) == (end_diff <= 0)) || ((start_diff <= 0) == (end_diff >= 0))
     }
 
@@ -121,7 +121,7 @@ fn contains_self_works() {
             "for {range:?}: {}, expected: {}",
             range.contains_self(),
             range.contains_self() == *expected
-        )
+        );
     });
 }
 

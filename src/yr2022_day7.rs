@@ -5,7 +5,7 @@ use anyhow::Ok;
 pub fn part1() -> anyhow::Result<u64> {
     let parsed = parse(get_data())?;
     let map = build_treemap(parsed);
-    Ok(sum_dir_size_under(map, 100000))
+    Ok(sum_dir_size_under(map, 100_000))
 }
 
 pub fn part2() -> anyhow::Result<u64> {
@@ -65,7 +65,7 @@ fn build_treemap(inp: Vec<Command>) -> HashMap<Vec<String>, Dir> {
                 CdTarget::Parent => {
                     curr_pos.pop().unwrap();
                     if curr_pos.is_empty() {
-                        curr_pos.push("/".to_string())
+                        curr_pos.push("/".to_string());
                     }
                 }
             },
@@ -106,7 +106,7 @@ fn update_parents(
     let len = pos.len();
 
     for i in (0..len).rev().skip(1) {
-        let curr_pos = &pos[..i + 1];
+        let curr_pos = &pos[..=i];
         let curr_pos = treemap.get_mut(curr_pos).unwrap();
         curr_pos.size += size;
     }
@@ -116,7 +116,7 @@ fn update_parents(
 
 impl From<LsDir> for Dir {
     fn from(val: LsDir) -> Self {
-        Dir {
+        Self {
             // take the name from self or the last element of curr_pos
             size: val.files.iter().fold(0u64, |acc, item| acc + item.size),
             files: val.files,
@@ -147,7 +147,7 @@ fn parse_ls(cmd: &str) -> Vec<LsDir> {
         .map(|cmd| {
             let mut lines = cmd
                 .lines()
-                .map(|line| line.trim())
+                .map(str::trim)
                 // .inspect(|item| {
                 //     let _ = dbg!(item);
                 // })
@@ -175,7 +175,7 @@ fn parse_ls(cmd: &str) -> Vec<LsDir> {
                 })
                 .collect();
 
-            LsDir { files, name }
+            LsDir { name, files }
         })
         .collect::<Vec<_>>()
 }
@@ -224,7 +224,7 @@ fn get_data() -> &'static str {
 #[test]
 fn test_part1() -> anyhow::Result<()> {
     let parsed = parse(get_data())?;
-    assert_eq!(sum_dir_size_under(build_treemap(parsed), 100000), 95437);
+    assert_eq!(sum_dir_size_under(build_treemap(parsed), 100_000), 95437);
 
     Ok(())
 }
@@ -232,7 +232,7 @@ fn test_part1() -> anyhow::Result<()> {
 #[test]
 fn test_part2() -> anyhow::Result<()> {
     let parsed = parse(get_data())?;
-    assert_eq!(smalles_del_to_free(build_treemap(parsed)), 24933642);
+    assert_eq!(smalles_del_to_free(build_treemap(parsed)), 24_933_642);
 
     Ok(())
 }

@@ -9,7 +9,7 @@ pub fn part1() -> u32 {
 }
 
 fn char_to_prio(c: char) -> u32 {
-    (c as u8 - if c.is_lowercase() { 96 } else { 38 }) as u32
+    u32::from(c as u8 - if c.is_lowercase() { 96 } else { 38 })
 }
 
 fn l_r_diff(data: &Data1) -> char {

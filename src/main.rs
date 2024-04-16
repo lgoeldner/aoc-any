@@ -2,6 +2,8 @@
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::cast_possible_truncation)]
 use core::time;
+use rayon::iter::ParallelBridge;
+use rayon::prelude::*;
 use std::{fmt, fmt::Debug, time::Instant};
 
 fn main() {
@@ -16,7 +18,7 @@ fn main() {
 
     time_dbg("day8part1", yr2022_day8::part1);
     time_bench::<1000, _>("day8part1nd", yr2022_day8::part1nd);
-    time_bench::<1000, _>("day8part2", yr2022_day8::part2);
+    time_bench::<100_000, _>("day8part2", yr2022_day8::part2);
 }
 
 fn time_dbg<R: Debug>(label: impl fmt::Display, f: impl Fn() -> R) -> R {
@@ -26,27 +28,25 @@ fn time_dbg<R: Debug>(label: impl fmt::Display, f: impl Fn() -> R) -> R {
     result
 }
 
-fn time_bench<const TIMES: usize, R: Debug>(label: impl fmt::Display, f: impl Fn() -> R) -> R {
-	let start = Instant::now();
+fn time_bench<const TIMES: usize, R>(
+    label: impl fmt::Display,
+    f: impl Fn() -> R + Send + Sync,
+) -> R
+where
+    R: Send + Sync + Debug,
+{
     let times = (0..TIMES)
+        .par_bridge()
         .map(|_| {
             let time = Instant::now();
             let _ = f();
             time.elapsed()
         })
         .collect::<Vec<_>>();
-
-    // let mut times = Vec::with_capacity(TIMES);
-    // for _ in 0..TIMES - 1 {
-    //     let time = Instant::now();
-    //     let _ = f();
-    //     times.push(time.elapsed());
-    // }
-
     eprintln!(
-        "Over {TIMES} Runs, average time Was: {:?}, elapsed: {:?}",
+        "Over {TIMES} Runs, average time Was: {:?}, elapsed runtime in function: {:?}",
         times.iter().sum::<time::Duration>() / TIMES as u32,
-        start.elapsed()
+        times.iter().sum::<time::Duration>()
     );
     let result = f();
     eprintln!("{label} resulted in {result:?}",);
