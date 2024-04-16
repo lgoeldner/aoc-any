@@ -1,10 +1,11 @@
+#![warn(clippy::pedantic, clippy::nursery)]
+#![allow(clippy::reversed_empty_ranges)]
+#![allow(clippy::cast_possible_truncation)]
 // use rayon::prelude::*;
 use itertools::Itertools;
-use nd::{prelude::*, ViewRepr};
+use nd::prelude::*;
 use ndarray as nd;
-use std::{fmt::Display, ops::BitOr};
-
-struct ScenicScore(u32);
+use std::ops::BitOr;
 
 #[derive(Clone, PartialEq, Eq)]
 struct TreeVis(u8, bool, Reason);
@@ -43,7 +44,7 @@ impl std::fmt::Debug for TreeVis {
     }
 }
 
-pub fn part1nd() -> anyhow::Result<u32> {
+pub fn part1nd() -> u32 {
     let data: Array2<TreeVisNd> = mark_visible_trees_nd(parse_nd(get_data()));
     let inner_view: ArrayView2<TreeVisNd> = slice_treevis_nd(&data);
 
@@ -51,7 +52,7 @@ pub fn part1nd() -> anyhow::Result<u32> {
     let res = inner_view
         .iter()
         // sum the number of visible trees inside the inner slice
-        .fold(0, |acc, item| acc + item.1 as u32)
+        .fold(0, |acc, item| acc + u32::from(item.1))
         + {
             // calculates the overhead for the outer two rows and columns
             let (x, y) = data.dim();
@@ -60,27 +61,42 @@ pub fn part1nd() -> anyhow::Result<u32> {
             (x * 2 + y * 2 - 4) as u32
         };
 
-    Ok(res)
+    res
 }
 
-pub fn part1() -> anyhow::Result<u32> {
+pub fn part1() -> u32 {
     let data = parse(get_data()).0;
-    Ok(to_visible_treecount(data))
+    to_visible_treecount(data)
 }
 
-pub fn part2() -> u32 {
-    process_part2(parse_nd(get_data()))
+pub fn part2() -> usize {
+    max_scenic_score(&parse_nd(get_data()))
 }
 
-fn process_part2(data: Array2<TreeVisNd>) -> u32 {
-    // go over each tree, map it to its "scenic score"
-    let _scenic_score = to_scenic_score(&data);
+fn max_scenic_score(data: &Array2<TreeVisNd>) -> usize {
+    data.indexed_iter()
+        .map(|((i, j), pos)| {
+            // construct slices in every direction, reversing left and up views
+            let (left, right) = &data.row(i).split_at(Axis(0), j);
+            // slice away the current position, reverse the before slice
+            let left = left.slice(s![..;-1]);
+            let right = right.slice(s![1..]);
 
-    todo!()
-}
+            let (up, down) = &data.column(j).split_at(Axis(0), i);
+            let up = up.slice(s![..;-1]);
+            let down: ArrayView1<_> = down.slice(s![1..]);
 
-fn to_scenic_score(data: &Array2<TreeVisNd>) -> Vec<Vec<ScenicScore>> {
-    todo!()
+            let traverse = |row: &ArrayView1<TreeVisNd>| {
+                row.iter().take_while_inclusive(|x| x.0 < pos.0).count()
+            };
+
+            [up, right, down, left]
+                .iter()
+                .map(traverse)
+                .product::<usize>()
+        })
+        .max()
+        .unwrap()
 }
 
 /// return a view into the array with the outer two rows and colums removed
@@ -91,7 +107,7 @@ fn slice_treevis_nd(data: &Array2<TreeVisNd>) -> ArrayView2<TreeVisNd> {
 /// marks every visible tree in the matrix by going over row and columns forward and reverse
 fn mark_visible_trees_nd(mut data: Array2<TreeVisNd>) -> Array2<TreeVisNd> {
     /// two helper functions
-    fn mark_visible_trees<'a>(inp: nd::iter::LanesMut<'_, TreeVisNd, ndarray::Dim<[usize; 1]>>) {
+    fn mark_visible_trees(inp: nd::iter::LanesMut<'_, TreeVisNd, ndarray::Dim<[usize; 1]>>) {
         for row in inp {
             let mut max_treeheight = 0;
             for cell in row {
@@ -103,9 +119,7 @@ fn mark_visible_trees_nd(mut data: Array2<TreeVisNd>) -> Array2<TreeVisNd> {
         }
     }
 
-    fn mark_visible_trees_rev<'a>(
-        inp: nd::iter::LanesMut<'_, TreeVisNd, ndarray::Dim<[usize; 1]>>,
-    ) {
+    fn mark_visible_trees_rev(inp: nd::iter::LanesMut<'_, TreeVisNd, ndarray::Dim<[usize; 1]>>) {
         for row in inp {
             let mut max_treeheight = 0;
             for cell in row.into_iter().rev() {
@@ -164,7 +178,7 @@ fn to_visible_treecount(data: Vec<Vec<Tree>>) -> u32 {
     dbg_vistreegrid(&inner.clone().collect::<Vec<_>>());
 
     let sum: u32 = inner
-        .map(|line| line.iter().fold(0, |sum, item| sum + item.1 as u32))
+        .map(|line| line.iter().fold(0, |sum, item| sum + u32::from(item.1)))
         .sum::<u32>()
         + data1[0].len() as u32 * 2
         + data1.len() as u32 * 2
@@ -172,7 +186,6 @@ fn to_visible_treecount(data: Vec<Vec<Tree>>) -> u32 {
 
     sum
 }
-
 
 #[allow(unused)]
 fn dbg_vistreegrid(inp: &[impl AsRef<[TreeVis]>]) {
@@ -182,9 +195,9 @@ fn dbg_vistreegrid(inp: &[impl AsRef<[TreeVis]>]) {
         eprintln!("<<===>>");
         for line in inp {
             for cell in line.as_ref() {
-                eprint!(" {:?} ", cell);
+                eprint!(" {cell:?} ");
             }
-            eprintln!()
+            eprintln!();
         }
         eprintln!("<<===>>");
     }
@@ -198,7 +211,7 @@ impl BitOr for TreeVis {
 }
 
 fn to_visible_treeline(inp: &[Tree], horizontal: bool) -> Vec<TreeVis> {
-    fn traverse<'a>(iter: impl Iterator<Item = &'a Tree>, reason: Reason) -> Vec<TreeVis> {
+    fn traverse<'a>(iter: impl Iterator<Item = &'a Tree>, reason: &Reason) -> Vec<TreeVis> {
         iter.scan(0, |max_treeheight, tree| {
             if tree.0 > *max_treeheight {
                 *max_treeheight = tree.0;
@@ -210,14 +223,15 @@ fn to_visible_treeline(inp: &[Tree], horizontal: bool) -> Vec<TreeVis> {
         .collect()
     }
 
-    let (reason1, reason2) = match horizontal {
-        true => (Reason::Horizontal, Reason::HorizontalRev),
-        false => (Reason::Vertical, Reason::VerticalRev),
+    let (reason1, reason2) = if horizontal {
+        (Reason::Horizontal, Reason::HorizontalRev)
+    } else {
+        (Reason::Vertical, Reason::VerticalRev)
     };
 
-    let data = traverse(inp.iter(), reason1);
+    let data = traverse(inp.iter(), &reason1);
 
-    let data2 = traverse(inp.iter().rev(), reason2);
+    let data2 = traverse(inp.iter().rev(), &reason2);
 
     let zipped = data
         .iter()
@@ -243,11 +257,14 @@ fn to_visible_treeline(inp: &[Tree], horizontal: bool) -> Vec<TreeVis> {
     zipped
 }
 
-/// https://stackoverflow.com/a/64499219/24086138
+/// <https://stackoverflow.com/a/64499219/24086138>
 fn transpose2<T: Send + Sync>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
     debug_assert!(!v.is_empty());
     let len = v[0].len();
-    let mut iters = v.into_iter().map(|n| n.into_iter()).collect::<Vec<_>>();
+    let mut iters = v
+        .into_iter()
+        .map(std::iter::IntoIterator::into_iter)
+        .collect::<Vec<_>>();
     (0..len)
         .map(|_| {
             iters
@@ -269,16 +286,16 @@ impl std::fmt::Debug for Tree {
 
 impl From<char> for Tree {
     fn from(val: char) -> Self {
-        Tree(
+        Self(
             val.to_digit(10)
-                .unwrap_or_else(|| panic!("invalid char: {}", val)) as u8,
+                .unwrap_or_else(|| panic!("invalid char: {val}")) as u8,
         )
     }
 }
 
 impl From<Vec<Vec<Tree>>> for Data {
-    fn from(value: Vec<Vec<Tree>>) -> Data {
-        Data(value)
+    fn from(value: Vec<Vec<Tree>>) -> Self {
+        Self(value)
     }
 }
 
@@ -303,12 +320,9 @@ fn parse_nd(data: &str) -> Array2<TreeVisNd> {
 
     let mut arr: Array2<TreeVisNd> = Array2::default((arr_size_y, arr_size_x));
 
-    let mut data_flat_iter = data
-        .lines()
-        .map(|line| line.chars().map(<Tree>::from))
-        .flatten();
+    let mut data_flat_iter = data.lines().flat_map(|line| line.chars().map(<Tree>::from));
 
-    for cell in arr.iter_mut() {
+    for cell in &mut arr {
         *cell = TreeVisNd(data_flat_iter.next().unwrap().0, false);
     }
 
@@ -322,7 +336,7 @@ fn parse(data: &str) -> Data {
         .into()
 }
 
-fn get_data() -> &'static str {
+const fn get_data() -> &'static str {
     if cfg!(debug_assertions) {
         include_str!("../inputs/day8-test.txt")
     } else {
@@ -332,5 +346,5 @@ fn get_data() -> &'static str {
 
 /// utility function
 fn zip<A: Iterator, B: Iterator>(a: A, b: B) -> impl Iterator<Item = (A::Item, B::Item)> {
-    a.into_iter().zip(b.into_iter())
+    a.zip(b)
 }
