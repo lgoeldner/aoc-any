@@ -2,10 +2,34 @@
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::cast_possible_truncation)]
 // use rayon::prelude::*;
+use aoc_any::*;
 use itertools::Itertools;
 use nd::prelude::*;
 use ndarray as nd;
 use std::ops::BitOr;
+
+pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
+    info: Info {
+        name: "Treetop Tree House",
+        day: 8,
+        year: 2022,
+        bench: BenchTimes::Many(100),
+    },
+    part1: || ProblemResult::Number(part1() as i64),
+    part2: Some(|| ProblemResult::Number(part2() as i64)),
+    other: &[
+        (
+            "part1nd",
+            || ProblemResult::Number(part1nd() as i64),
+            Run::Yes,
+        ),
+        (
+            "heavy input, 1 + 2",
+            || ProblemResult::Other(Box::new(big_inp_1and2())),
+            Run::No,
+        ),
+    ],
+};
 
 #[derive(Clone, PartialEq, Eq)]
 struct TreeVis(u8, bool, Reason);
@@ -44,8 +68,8 @@ impl std::fmt::Debug for TreeVis {
     }
 }
 
-pub fn part1nd() -> u32 {
-    let data: Array2<TreeVisNd> = mark_visible_trees_nd(parse_nd(get_data()));
+fn do_part1nd(data: Array2<TreeVisNd>) -> u32 {
+    let data: Array2<TreeVisNd> = mark_visible_trees_nd(data);
     let inner_view: ArrayView2<TreeVisNd> = slice_treevis_nd(&data);
 
     // sum the number of visible trees
@@ -64,6 +88,10 @@ pub fn part1nd() -> u32 {
     res
 }
 
+pub fn part1nd() -> u32 {
+    do_part1nd(parse_nd(get_data()))
+}
+
 pub fn part1() -> u32 {
     let data = parse(get_data()).0;
     to_visible_treecount(data)
@@ -71,6 +99,12 @@ pub fn part1() -> u32 {
 
 pub fn part2() -> usize {
     max_scenic_score(&parse_nd(get_data()))
+}
+
+pub fn big_inp_1and2() -> (u32, usize) {
+    let data = include_str!("../inputs/aoc_2022_day08_sparse.txt");
+    let part2_res = max_scenic_score(&parse_nd(data));
+    (do_part1nd(parse_nd(data)), part2_res)
 }
 
 fn max_scenic_score(data: &Array2<TreeVisNd>) -> usize {

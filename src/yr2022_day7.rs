@@ -1,17 +1,30 @@
 use std::{collections::HashMap, vec};
 
 use anyhow::Ok;
+use aoc_any::{Info, ProblemResult, Solution};
 
-pub fn part1() -> anyhow::Result<u64> {
-    let parsed = parse(get_data())?;
+pub const SOLUTION: Solution = Solution {
+    info: Info {
+        bench: aoc_any::BenchTimes::Default,
+        day: 7,
+        name: "No Space Left On Device",
+        year: 2022,
+    },
+    other: &[],
+    part1: || ProblemResult::Number(part1().try_into().unwrap()),
+    part2: Some(|| ProblemResult::Number(part2().try_into().unwrap())),
+};
+
+pub fn part1() -> u64 {
+    let parsed = parse(get_data()).unwrap();
     let map = build_treemap(parsed);
-    Ok(sum_dir_size_under(map, 100_000))
+    sum_dir_size_under(map, 100_000)
 }
 
-pub fn part2() -> anyhow::Result<u64> {
-    let parsed = parse(get_data())?;
+pub fn part2() -> u64 {
+    let parsed = parse(get_data()).unwrap();
     let map = build_treemap(parsed);
-    Ok(smalles_del_to_free(map))
+    smalles_del_to_free(map)
 }
 
 fn smalles_del_to_free(treemap: HashMap<Vec<String>, Dir>) -> u64 {
