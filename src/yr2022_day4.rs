@@ -10,27 +10,27 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
         year: 2022,
         bench: BenchTimes::Many(100),
     },
-    part1: || ProblemResult::Number(part1().unwrap() as i64),
-    part2: Some(|| ProblemResult::Number(part2().unwrap() as i64)),
+    part1: || ProblemResult::Number(i64::from(part1().unwrap())),
+    part2: Some(|| ProblemResult::Number(i64::from(part2().unwrap()))),
     other: &[],
 };
 
-fn part1_withdata(data: String) -> anyhow::Result<u32> {
-    let parsed = parse1(&data)?;
+fn part1_withdata(data: &str) -> anyhow::Result<u32> {
+    let parsed = parse1(data)?;
     Ok(parsed.iter().filter(|r2| r2.contains_self()).count() as u32)
 }
 
-fn part2_withdata(data: String) -> anyhow::Result<u32> {
-    let parsed = parse1(&data)?;
+fn part2_withdata(data: &str) -> anyhow::Result<u32> {
+    let parsed = parse1(data)?;
     Ok(parsed.iter().filter(|r2| r2.overlaps()).count() as u32)
 }
 
 pub fn part1() -> anyhow::Result<u32> {
-    part1_withdata(get_data())
+    part1_withdata(&get_data())
 }
 
 pub fn part2() -> anyhow::Result<u32> {
-    part2_withdata(get_data())
+    part2_withdata(&get_data())
 }
 
 fn get_data() -> String {

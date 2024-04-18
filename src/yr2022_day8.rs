@@ -2,7 +2,7 @@
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::cast_possible_truncation)]
 // use rayon::prelude::*;
-use aoc_any::*;
+use aoc_any::{BenchTimes, Info, ProblemResult, Run};
 use itertools::Itertools;
 use nd::prelude::*;
 use ndarray as nd;
@@ -15,14 +15,10 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
         year: 2022,
         bench: BenchTimes::Many(100),
     },
-    part1: || ProblemResult::Number(part1() as i64),
-    part2: Some(|| ProblemResult::Number(part2() as i64)),
+    part1: || ProblemResult::Number(i64::from(part1())),
+    part2: Some(|| ProblemResult::Number(part2().try_into().unwrap())),
     other: &[
-        (
-            "part1nd",
-            || part1nd().into(),
-            Run::Yes,
-        ),
+        ("part1nd", || part1nd().into(), Run::Yes),
         (
             "heavy input, 1 + 2",
             || ProblemResult::Other(Box::new(big_inp_1and2())),

@@ -1,4 +1,4 @@
-use aoc_any::{BenchTimes, Info, ProblemResult, Solution};
+use aoc_any::{BenchTimes, Info, Solution};
 use itertools::Itertools;
 use std::collections::HashSet;
 

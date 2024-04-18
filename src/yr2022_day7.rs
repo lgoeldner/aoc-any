@@ -18,19 +18,20 @@ pub const SOLUTION: Solution = Solution {
 pub fn part1() -> u64 {
     let parsed = parse(get_data()).unwrap();
     let map = build_treemap(parsed);
-    sum_dir_size_under(map, 100_000)
+    sum_dir_size_under(&map, 100_000)
 }
 
 pub fn part2() -> u64 {
     let parsed = parse(get_data()).unwrap();
     let map = build_treemap(parsed);
-    smalles_del_to_free(map)
+    smalles_del_to_free(&map)
 }
 
-fn smalles_del_to_free(treemap: HashMap<Vec<String>, Dir>) -> u64 {
-    let root = &treemap[&vec!["/".into()]];
+fn smalles_del_to_free(treemap: &HashMap<Vec<String>, Dir>) -> u64 {
     const DISK_SPACE: u64 = 70_000_000;
     const SPACE_REQ: u64 = 30_000_000;
+
+    let root = &treemap[&vec!["/".into()]];
     let space_available = DISK_SPACE - root.size;
     let needs_deleted = SPACE_REQ - space_available;
 
@@ -47,7 +48,7 @@ fn smalles_del_to_free(treemap: HashMap<Vec<String>, Dir>) -> u64 {
         .unwrap()
 }
 
-fn sum_dir_size_under(treemap: HashMap<Vec<String>, Dir>, cap: u64) -> u64 {
+fn sum_dir_size_under(treemap: &HashMap<Vec<String>, Dir>, cap: u64) -> u64 {
     treemap
         .values()
         .filter_map(|dir| {

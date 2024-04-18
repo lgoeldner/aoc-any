@@ -1,4 +1,4 @@
-use aoc_any::*;
+use aoc_any::{BenchTimes, Info, Solution};
 
 
 pub const _SOLUTION: Solution = Solution {
