@@ -6,7 +6,7 @@ use rayon::prelude::*;
 use std::fmt::{Debug, Display};
 use std::{fmt, time::Instant};
 
-type SolutionFn = fn() -> ProblemResult;
+pub type SolutionFn = fn() -> ProblemResult;
 
 pub struct Solution {
     pub part1: fn() -> ProblemResult,
@@ -113,7 +113,7 @@ pub struct BenchRun {
     #[table(title = "name", bold)]
     pub name: &'static str,
     #[table(title = "label", bold)]
-    pub label: &'static str,
+    pub label: String,
 
     #[table(display_fn = "display_duration", title = "avg", color = "Color::Cyan")]
     pub avg_time: time::Duration,
@@ -146,8 +146,8 @@ macro_rules! some_if {
 }
 
 pub fn time_bench_solution(
-    info: &'static Info,
-    label: &'static str,
+    info: &Info,
+    label: String,
     f: impl Fn() -> ProblemResult + Send + Sync,
 ) -> BenchRun {
     let times = match info.bench {
@@ -158,6 +158,7 @@ pub fn time_bench_solution(
     };
 
     if label.contains("heavy") {
+        eprintln!("Running heavy benchmark");
         let start = Instant::now();
         let output = f();
         return BenchRun {
@@ -248,14 +249,14 @@ pub enum Part {
 pub fn bench_solutions(days: &'static [&'static Solution]) -> Vec<BenchRun> {
     let mut runs = Vec::new();
     for day in days.iter().rev() {
-        runs.push(time_bench_solution(&day.info, "part1", day.part1));
+        runs.push(time_bench_solution(&day.info, "part1".to_owned(), day.part1));
         if let Some(part2) = day.part2 {
-            runs.push(time_bench_solution(&day.info, "part2", part2));
+            runs.push(time_bench_solution(&day.info, "part2".to_owned(), part2));
         }
 
         let iter = day.other.iter().filter_map(|(label, f, run)| {
             some_if! {
-                matches!(run, Run::Yes) => time_bench_solution(&day.info, label, f)
+                matches!(run, Run::Yes) => time_bench_solution(&day.info, label.to_string(), f)
             }
         });
 

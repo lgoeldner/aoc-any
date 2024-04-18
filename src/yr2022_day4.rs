@@ -6,7 +6,7 @@ use std::str::FromStr;
 pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
     info: aoc_any::Info {
         name: "Camp Cleanup",
-        day: 8,
+        day: 4,
         year: 2022,
         bench: BenchTimes::Many(100),
     },
@@ -106,7 +106,7 @@ fn parse1(inp: &str) -> anyhow::Result<Vec<Range2>> {
 #[test]
 fn test_part1() -> anyhow::Result<()> {
     let data = include_str!("../inputs/day4-test.txt").to_owned();
-    part1_withdata(data).map(|_| ())?;
+    part1_withdata(&data).map(|_| ())?;
 
     Ok(())
 }
