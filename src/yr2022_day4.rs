@@ -1,6 +1,19 @@
 use anyhow::Ok;
+use aoc_any::{BenchTimes, ProblemResult};
 use std::cmp::{max, min};
 use std::str::FromStr;
+
+pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
+    info: aoc_any::Info {
+        name: "Camp Cleanup",
+        day: 8,
+        year: 2022,
+        bench: BenchTimes::Many(100),
+    },
+    part1: || ProblemResult::Number(part1().unwrap() as i64),
+    part2: Some(|| ProblemResult::Number(part2().unwrap() as i64)),
+    other: &[],
+};
 
 fn part1_withdata(data: String) -> anyhow::Result<u32> {
     let parsed = parse1(&data)?;

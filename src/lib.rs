@@ -24,6 +24,12 @@ pub enum ProblemResult {
     Other(Box<dyn Debug + Send + Sync>),
 }
 
+impl From<u32> for ProblemResult {
+    fn from(value: u32) -> Self {
+        ProblemResult::Number(i64::from(value))
+    }
+}
+
 impl std::fmt::Display for ProblemResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -97,21 +103,21 @@ where
 #[derive(Table)]
 #[non_exhaustive]
 pub struct BenchRun {
-    #[table(title = "name", bold)]
-    pub name: &'static str,
-    #[table(title = "label", bold)]
-    pub label: &'static str,
-
     #[table(title = "year")]
     pub year: u16,
     #[table(title = "day")]
     pub day: u8,
 
-    #[table(display_fn = "display_duration", title = "avg")]
+    #[table(title = "name", bold)]
+    pub name: &'static str,
+    #[table(title = "label", bold)]
+    pub label: &'static str,
+
+    #[table(display_fn = "display_duration", title = "avg", color = "Color::Cyan")]
     pub avg_time: time::Duration,
-    #[table(display_fn = "display_duration", title = "elapsed")]
+    #[table(display_fn = "display_duration", title = "elapsed", skip)]
     pub elapsed: time::Duration,
-    #[table(title = "Benchmarked", display_fn = "display_times")]
+    #[table(title = "Benchmarked", display_fn = "display_times", skip)]
     pub times: usize,
 
     #[table(title = "result", color = "Color::Green")]
@@ -166,7 +172,7 @@ pub fn time_bench_solution(
 
     let start = Instant::now();
 
-    let runs = if times > 100 {
+    let runs = if times > 90 {
         (0..times)
             .par_bridge()
             .map(|_| {
@@ -235,4 +241,27 @@ pub enum Part {
     One,
     Two,
     Other(String),
+}
+
+pub fn bench_days(days: &'static [&'static Solution]) -> Vec<BenchRun> {
+    let mut runs = Vec::new();
+    for day in days.iter().rev() {
+        runs.push(time_bench_solution(&day.info, "part1", day.part1));
+        if let Some(part2) = day.part2 {
+            runs.push(time_bench_solution(&day.info, "part2", part2));
+        }
+
+        let iter = day
+            .other
+            .iter()
+            .map(|(label, f, run)| {
+                some_if! {
+                    matches!(run, Run::Yes) => time_bench_solution(&day.info, label, f)
+                }
+            })
+            .filter_map(|opt| opt);
+
+        runs.extend(iter)
+    }
+    runs
 }

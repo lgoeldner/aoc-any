@@ -1,5 +1,18 @@
+use aoc_any::{BenchTimes, Info, ProblemResult, Solution};
 use itertools::Itertools;
 use std::collections::HashSet;
+
+pub const SOLUTION: Solution = Solution {
+    info: Info {
+        name: "Rucksack Reorganization",
+        day: 3,
+        year: 2022,
+        bench: BenchTimes::Default,
+    },
+    other: &[],
+    part1: || part1().into(),
+    part2: Some(|| part2().into()),
+};
 
 pub fn part1() -> u32 {
     parse_1(&read_input())

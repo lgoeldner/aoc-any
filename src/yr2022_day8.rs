@@ -20,7 +20,7 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
     other: &[
         (
             "part1nd",
-            || ProblemResult::Number(part1nd() as i64),
+            || part1nd().into(),
             Run::Yes,
         ),
         (
