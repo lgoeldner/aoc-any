@@ -2,9 +2,9 @@
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::cast_possible_truncation)]
 
-use aoc_any::{time_bench_solution, ProblemResult, Solution};
+
+use aoc_any::{time_bench_solution, Solution};
 use cli_table::WithTitle;
-use rayon::vec;
 
 const DAYS: &[&Solution] = &[
     &yr2022_day3::SOLUTION,
@@ -21,7 +21,7 @@ fn main() -> Result<(), std::io::Error> {
         let matcher = SkimMatcherV2::default();
 
         let matched_benches = DAYS
-            .into_iter()
+            .iter()
             .flat_map(get_names)
             .filter_map(|name| matcher.fuzzy_match(&name.0, &usr_query).map(|_| name))
             .collect::<Vec<_>>();
@@ -34,12 +34,12 @@ fn main() -> Result<(), std::io::Error> {
             ));
         }
 
-        let iter = matched_benches
+        let result = matched_benches
             .into_iter()
             .map(|(label, f, info)| time_bench_solution(info, label, f))
             .collect::<Vec<_>>();
 
-        return cli_table::print_stdout(iter.with_title());
+        return cli_table::print_stdout(result.with_title());
     }
 
     let runs = aoc_any::bench_solutions(DAYS);
@@ -47,23 +47,19 @@ fn main() -> Result<(), std::io::Error> {
 }
 
 /// formats the names for each function available for the Solution, returns a Vec of (name, fn)
-fn get_names(
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn get_names(    
     inp: &&'static Solution,
 ) -> Vec<(String, aoc_any::SolutionFn, &'static aoc_any::Info)> {
-    let x = if let Some(part2) = inp.part2 {
-        vec![("part1", inp.part1), ("part2", part2)]
-    } else {
-        vec![("part1", inp.part1)]
-    };
+    let x = inp.part2.map_or_else(
+        || vec![("part1", inp.part1)],
+        |part2| vec![("part1", inp.part1), ("part2", part2)],
+    );
 
-    let y = inp
-        .other
-        .iter()
-        .map(|(a, b, _)| (*a, *b))
-        .collect::<Vec<_>>();
+    let others = inp.other.iter().map(|(a, b, _)| (*a, *b));
 
     x.into_iter()
-        .chain(y.into_iter())
+        .chain(others)
         .map(|s| {
             (
                 format!(
