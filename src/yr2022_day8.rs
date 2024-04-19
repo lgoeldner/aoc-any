@@ -17,10 +17,10 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
         year: 2022,
         bench: BenchTimes::Many(100),
     },
-    part1: || ProblemResult::Number(i64::from(part1())),
+    part1: || part1nd().into(),
     part2: Some(|| ProblemResult::Number(part2().try_into().unwrap())),
     other: &[
-        ("part1nd", || part1nd().into(), Run::Yes),
+        ("part1 legacy", || part1().into(), Run::No),
         (
             "heavy input, 1 + 2",
             || ProblemResult::Other(Box::new(big_inp_1and2())),
@@ -135,7 +135,6 @@ fn max_scenic_score(data: &Array2<TreeVisNd>) -> usize {
         .max()
         .unwrap()
 }
-
 
 /// same thing as above but in parallel
 fn par_max_scenic_score(data: &Array2<TreeVisNd>) -> usize {

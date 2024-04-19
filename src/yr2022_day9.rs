@@ -1,13 +1,13 @@
+use anyhow::anyhow;
+use aoc_any::{BenchTimes, Info, Run, Solution};
+use gxhash::GxHashSet;
 use std::{
     cmp::max,
     collections::{BTreeSet, HashSet},
-    hash::Hash,
+    hash::{BuildHasher, Hash},
     ops::Sub,
     str::FromStr,
 };
-
-use anyhow::anyhow;
-use aoc_any::{BenchTimes, Info, Run, Solution};
 
 #[rustfmt::skip]
 const EXAMPLE: &str = 
@@ -20,6 +20,15 @@ D 1
 L 5
 R 2";
 
+const EXAMPLE2: &str = "R 5
+U 8
+L 8
+D 3
+R 17
+D 10
+L 25
+U 20";
+
 pub const SOLUTION: Solution = Solution {
     info: Info {
         name: "Rope Bridge",
@@ -27,17 +36,32 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: BenchTimes::Once,
     },
-    part1: || part1().into(),
-    part2: None,
+    part1: || do_part1(parse(get_data()).unwrap(), GxHashSet::default()).into(),
+    part2: Some(|| part2().into()),
     other: &[
         ("BTreeSet part1", || part1_btreeset().into(), Run::No),
         (
-            "part 1 example",
-            || do_part1(parse(EXAMPLE).unwrap(), BTreeSet::new()).into(),
+            "GxHash part1",
+            || do_part1(parse(get_data()).unwrap(), GxHashSet::default()).into(),
+            Run::No,
+        ),
+        (
+            "StdHash part1",
+            || do_part1(parse(get_data()).unwrap(), HashSet::new()).into(),
+            Run::No,
+        ),
+        (
+            "part1 example gxhash",
+            || do_part1(parse(EXAMPLE).unwrap(), GxHashSet::default()).into(),
             Run::No,
         ),
     ],
 };
+
+fn part2() -> u32 {
+    let data = parse(get_data()).unwrap();
+    do_part2(data, GxHashSet::default())
+}
 
 fn part1() -> u32 {
     let data = parse(get_data()).unwrap();
@@ -55,15 +79,6 @@ struct Pos {
     y: i32,
 }
 
-impl Pos {
-    fn abs(self) -> Self {
-        Self {
-            x: self.x.abs(),
-            y: self.y.abs(),
-        }
-    }
-}
-
 impl Sub for Pos {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -79,7 +94,7 @@ trait Set<T> {
     fn len(&self) -> usize;
 }
 
-impl<T: std::cmp::Eq + std::hash::Hash> Set<T> for HashSet<T> {
+impl<T: std::cmp::Eq + std::hash::Hash, S: BuildHasher> Set<T> for HashSet<T, S> {
     fn insert(&mut self, item: T) {
         HashSet::insert(self, item);
     }
@@ -117,34 +132,68 @@ fn do_part1(data: Vec<Data>, mut set: impl Set<Pos>) -> u32 {
     set.len() as u32
 }
 
+fn do_part2(data: Vec<Data>, mut set: impl Set<Pos>) -> u32 {
+    let mut snake = [Pos { x: 0, y: 0 }; 10];
+
+    for (dir, times) in data {
+        for _ in 0..times {
+            snake[0].apply(&dir);
+
+            for (head, snd) in (0..10).zip(1..10) {
+                update_tail_match(snake[head], &mut snake[snd]);
+            }
+
+            set.insert(snake[9]);
+        }
+    }
+    set.len() as u32
+}
+
 fn update_tail(head: Pos, tail: &mut Pos, set: &mut impl Set<Pos>) {
+    update_tail_match(head, tail);
+    // eprintln!("{i}");
+    // print_grid(&head, &tail);
+    set.insert(*tail);
+}
+
+fn update_tail_match(head: Pos, tail: &mut Pos) {
     match head - *tail {
-        Pos { x: 0, y: 2 } | Pos { x: 2, y: 0 } => tail.y += 1,
-        Pos { x: -2, y: 0 } | Pos { x: 0, y: -2 } => tail.x -= 1,
+        Pos { x: 0, y: 2 } => tail.y += 1,
+        Pos { x: 2, y: 0 } => tail.x += 1,
+        Pos { x: -2, y: 0 } => tail.x -= 1,
+        Pos { x: 0, y: -2 } => tail.y -= 1,
 
         // diagonal cases
-        Pos { x: _, y: 2 } | Pos { x: 2, y: _ } | Pos { x: -2, y: _ } | Pos { x: _, y: -2 } => {
+        Pos { x: _, y: 2 | -2 } | Pos { x: 2 | -2, y: _ } => {
             let diagonal = head - *tail;
             match diagonal {
-                Pos { x: 1, y: 2 } | Pos { x: 2, y: 1 } => {
+                Pos { x: 1 | 2, y: 2 | 1 } => {
                     tail.x += 1;
-                    tail.y += 1
+                    tail.y += 1;
                 }
-
-                Pos { x: -2, y: 1 } | Pos { x: -1, y: 2 } => {
+                Pos {
+                    x: -2 | -1,
+                    y: 1 | 2,
+                } => {
                     tail.x -= 1;
-                    tail.y += 1
+                    tail.y += 1;
                 }
-                Pos { x: 2, y: -1 } | Pos { x: 1, y: -2 } => {
+                Pos {
+                    x: 2 | 1,
+                    y: -1 | -2,
+                } => {
                     tail.x += 1;
-                    tail.y -= 1
+                    tail.y -= 1;
                 }
-                Pos { x: -2, y: -1 } | Pos { x: -1, y: -2 } => {
+                Pos {
+                    x: -2 | -1,
+                    y: -1 | -2,
+                } => {
                     tail.x -= 1;
-                    tail.y -= 1
+                    tail.y -= 1;
                 }
-                _ => {
-                    unreachable!()
+                any => {
+                    unreachable!("{any:?} head: {head:?}, tail: {tail:?}");
                 }
             }
         }
@@ -152,9 +201,6 @@ fn update_tail(head: Pos, tail: &mut Pos, set: &mut impl Set<Pos>) {
         // any => {dbg!(any);}
         _ => {}
     }
-    // eprintln!("{i}");
-    // print_grid(&head, &tail);
-    set.insert(tail);
 }
 
 impl Pos {
