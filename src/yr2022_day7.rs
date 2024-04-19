@@ -237,8 +237,8 @@ const fn get_data() -> &'static str {
 
 #[test]
 fn test_part1() -> anyhow::Result<()> {
-    let parsed = parse(get_data())?;
-    assert_eq!(sum_dir_size_under(build_treemap(parsed), 100_000), 95437);
+    let parsed: Vec<Command> = parse(get_data())?;
+    assert_eq!(sum_dir_size_under(&build_treemap(parsed), 100_000), 95437);
 
     Ok(())
 }
@@ -246,7 +246,7 @@ fn test_part1() -> anyhow::Result<()> {
 #[test]
 fn test_part2() -> anyhow::Result<()> {
     let parsed = parse(get_data())?;
-    assert_eq!(smalles_del_to_free(build_treemap(parsed)), 24_933_642);
+    assert_eq!(smalles_del_to_free(&build_treemap(parsed)), 24_933_642);
 
     Ok(())
 }

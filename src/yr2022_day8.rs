@@ -2,10 +2,12 @@
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::cast_possible_truncation)]
 // use rayon::prelude::*;
-use aoc_any::{BenchTimes, Info, ProblemResult, Run};
+use aoc_any::{zip, BenchTimes, Info, ProblemResult, Run};
 use itertools::Itertools;
 use nd::prelude::*;
 use ndarray as nd;
+// use rayon::iter::ParallelBridge;
+use rayon::prelude::*;
 use std::ops::BitOr;
 
 pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
@@ -99,12 +101,46 @@ pub fn part2() -> usize {
 
 pub fn big_inp_1and2() -> (u32, usize) {
     let data = include_str!("../inputs/aoc_2022_day08_sparse.txt");
-    let part2_res = max_scenic_score(&parse_nd(data));
+
+    let part2_res = if cfg!(debug_assertions) {
+        par_max_scenic_score(&parse_nd(data))
+    } else {
+        max_scenic_score(&parse_nd(data))
+    };
     (do_part1nd(parse_nd(data)), part2_res)
 }
 
 fn max_scenic_score(data: &Array2<TreeVisNd>) -> usize {
     data.indexed_iter()
+        .map(|((i, j), pos)| {
+            // construct slices in every direction, reversing left and up views
+            let (left, right) = &data.row(i).split_at(Axis(0), j);
+            // slice away the current position, reverse the before slice
+            let left = left.slice(s![..;-1]);
+            let right = right.slice(s![1..]);
+
+            let (up, down) = &data.column(j).split_at(Axis(0), i);
+            let up = up.slice(s![..;-1]);
+            let down: ArrayView1<_> = down.slice(s![1..]);
+
+            let traverse = |row: &ArrayView1<TreeVisNd>| {
+                row.iter().take_while_inclusive(|x| x.0 < pos.0).count()
+            };
+
+            [up, right, down, left]
+                .iter()
+                .map(traverse)
+                .product::<usize>()
+        })
+        .max()
+        .unwrap()
+}
+
+
+/// same thing as above but in parallel
+fn par_max_scenic_score(data: &Array2<TreeVisNd>) -> usize {
+    data.indexed_iter()
+        .par_bridge()
         .map(|((i, j), pos)| {
             // construct slices in every direction, reversing left and up views
             let (left, right) = &data.row(i).split_at(Axis(0), j);
@@ -367,14 +403,10 @@ fn parse(data: &str) -> Data {
 }
 
 const fn get_data() -> &'static str {
-    if cfg!(debug_assertions) {
-        include_str!("../inputs/day8-test.txt")
-    } else {
-        include_str!("../inputs/day8-inp.txt")
-    }
-}
-
-/// utility function
-fn zip<A: Iterator, B: Iterator>(a: A, b: B) -> impl Iterator<Item = (A::Item, B::Item)> {
-    a.zip(b)
+    // if cfg!(debug_assertions) {
+    //     include_str!("../inputs/day8-test.txt")
+    // } else {
+    //     include_str!("../inputs/day8-inp.txt")
+    // }
+    include_str!("../inputs/day8-inp.txt")
 }

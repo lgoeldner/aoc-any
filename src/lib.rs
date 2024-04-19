@@ -1,5 +1,5 @@
-use cli_table::Color;
-use cli_table::Table;
+use cli_table::{format::Justify, Color, Table};
+
 use core::time;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::*;
@@ -105,14 +105,14 @@ where
 #[derive(Table)]
 #[non_exhaustive]
 pub struct BenchRun {
-    #[table(title = "year")]
+    #[table(title = "year", justify = "Justify::Right")]
     pub year: u16,
     #[table(title = "day")]
     pub day: u8,
 
-    #[table(title = "name", bold)]
+    #[table(title = "name")]
     pub name: &'static str,
-    #[table(title = "label", bold)]
+    #[table(title = "label")]
     pub label: String,
 
     #[table(display_fn = "display_duration", title = "avg", color = "Color::Cyan")]
@@ -246,10 +246,14 @@ pub enum Part {
     Other(String),
 }
 
-pub fn bench_solutions(days: &'static [&'static Solution]) -> Vec<BenchRun> {
+pub fn bench_solutions(days: &'static [Solution]) -> Vec<BenchRun> {
     let mut runs = Vec::new();
     for day in days.iter().rev() {
-        runs.push(time_bench_solution(&day.info, "part1".to_owned(), day.part1));
+        runs.push(time_bench_solution(
+            &day.info,
+            "part1".to_owned(),
+            day.part1,
+        ));
         if let Some(part2) = day.part2 {
             runs.push(time_bench_solution(&day.info, "part2".to_owned(), part2));
         }
@@ -263,4 +267,9 @@ pub fn bench_solutions(days: &'static [&'static Solution]) -> Vec<BenchRun> {
         runs.extend(iter)
     }
     runs
+}
+
+/// utility function
+pub fn zip<A: Iterator, B: Iterator>(a: A, b: B) -> impl Iterator<Item = (A::Item, B::Item)> {
+    a.zip(b)
 }
