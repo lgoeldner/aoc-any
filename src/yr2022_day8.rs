@@ -1,14 +1,15 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::cast_possible_truncation)]
-// use rayon::prelude::*;
-use aoc_any::{zip, BenchTimes, Info, ProblemResult, Run};
+
+use std::ops::BitOr;
+
 use itertools::Itertools;
 use nd::prelude::*;
 use ndarray as nd;
-// use rayon::iter::ParallelBridge;
 use rayon::prelude::*;
-use std::ops::BitOr;
+
+use aoc_any::{zip, BenchTimes, Info, ProblemResult, Run};
 
 pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
     info: Info {

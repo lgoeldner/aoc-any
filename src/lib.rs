@@ -41,7 +41,7 @@ macro_rules! impl_from_problem_num {
 
 impl_from_problem_num! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
 
-impl std::fmt::Display for ProblemResult {
+impl Display for ProblemResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProblemResult::Number(n) => write!(f, "{n}"),
@@ -68,17 +68,14 @@ pub enum BenchTimes {
     Many(usize),
 }
 
-pub fn time_dbg<R: Debug>(label: impl fmt::Display, f: impl Fn() -> R) -> R {
+pub fn time_dbg<R: Debug>(label: impl Display, f: impl Fn() -> R) -> R {
     let time = Instant::now();
     let result = f();
     eprintln!("{label} result: {result:?}, elapsed: {:?}", time.elapsed());
     result
 }
 
-pub fn time_bench<const TIMES: usize, R>(
-    label: impl fmt::Display,
-    f: impl Fn() -> R + Send + Sync,
-) -> R
+pub fn time_bench<const TIMES: usize, R>(label: impl Display, f: impl Fn() -> R + Send + Sync) -> R
 where
     R: Send + Sync + Debug,
 {
@@ -204,7 +201,11 @@ pub fn time_bench_solution(
     };
 
     let output = f();
-    let avg_time = runs.iter().sum::<time::Duration>() / runs.len() as u32;
+    let avg_time = runs
+        .iter()
+        .sum::<time::Duration>()
+        .checked_div(runs.len() as u32)
+        .unwrap_or_default();
 
     BenchRun {
         output,
@@ -218,11 +219,7 @@ pub fn time_bench_solution(
     }
 }
 
-pub fn time_bench_runt<R>(
-    label: impl fmt::Display,
-    times: usize,
-    f: impl Fn() -> R + Send + Sync,
-) -> R
+pub fn time_bench_runt<R>(label: impl Display, times: usize, f: impl Fn() -> R + Send + Sync) -> R
 where
     R: Send + Sync + Debug,
 {
@@ -281,4 +278,82 @@ pub fn bench_solutions(days: &'static [Solution]) -> Vec<BenchRun> {
 /// utility function
 pub fn zip<A: Iterator, B: Iterator>(a: A, b: B) -> impl Iterator<Item = (A::Item, B::Item)> {
     a.zip(b)
+}
+
+pub mod set_trait {
+    use std::collections::{BTreeSet, HashSet};
+    use std::hash::{BuildHasher, Hash};
+
+    pub trait Set<T> {
+        fn insert(&mut self, item: T);
+        fn len(&self) -> usize;
+
+        fn is_empty(&self) -> bool {
+            self.len() == 0
+        }
+    }
+
+    impl<T: Eq + Hash, S: BuildHasher> Set<T> for HashSet<T, S> {
+        fn insert(&mut self, item: T) {
+            Self::insert(self, item);
+        }
+
+        fn len(&self) -> usize {
+            self.len()
+        }
+    }
+
+    impl<T: Eq + Hash + Ord> Set<T> for BTreeSet<T> {
+        fn insert(&mut self, item: T) {
+            Self::insert(self, item);
+        }
+
+        fn len(&self) -> usize {
+            Self::len(self)
+        }
+    }
+}
+
+pub mod map_trait {
+    use std::collections::{BTreeMap, HashMap};
+    use std::hash::{BuildHasher, Hash};
+
+    pub trait Map<K, V> {
+        fn insert(&mut self, key: K, value: V);
+        fn len(&self) -> usize;
+
+        fn get(&self, key: &K) -> Option<&V>;
+
+        fn is_empty(&self) -> bool {
+            self.len() == 0
+        }
+    }
+
+    impl<K: Eq + Hash, V, S: BuildHasher> Map<K, V> for HashMap<K, V, S> {
+        fn insert(&mut self, key: K, value: V) {
+            Self::insert(self, key, value);
+        }
+
+        fn len(&self) -> usize {
+            self.len()
+        }
+
+        fn get(&self, key: &K) -> Option<&V> {
+            Self::get(self, key)
+        }
+    }
+
+    impl<K: Eq + Hash + Ord, V> Map<K, V> for BTreeMap<K, V> {
+        fn insert(&mut self, key: K, value: V) {
+            Self::insert(self, key, value);
+        }
+
+        fn len(&self) -> usize {
+            Self::len(self)
+        }
+
+        fn get(&self, key: &K) -> Option<&V> {
+            Self::get(self, key)
+        }
+    }
 }

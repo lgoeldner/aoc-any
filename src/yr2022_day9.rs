@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeSet, HashSet},
-    hash::{BuildHasher, Hash},
+    hash::Hash,
     ops::Sub,
     str::FromStr,
 };
@@ -8,7 +8,7 @@ use std::{
 use anyhow::anyhow;
 use gxhash::GxHashSet;
 
-use aoc_any::{BenchTimes, Info, Run, Solution};
+use aoc_any::{set_trait::Set, BenchTimes, Info, Run, Solution};
 
 #[rustfmt::skip]
 const EXAMPLE: &str = 
@@ -73,31 +73,6 @@ impl Sub for Pos {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
         }
-    }
-}
-
-trait Set<T> {
-    fn insert(&mut self, item: T);
-    fn len(&self) -> usize;
-}
-
-impl<T: Eq + Hash, S: BuildHasher> Set<T> for HashSet<T, S> {
-    fn insert(&mut self, item: T) {
-        Self::insert(self, item);
-    }
-
-    fn len(&self) -> usize {
-        self.len()
-    }
-}
-
-impl<T: Eq + Hash + Ord> Set<T> for BTreeSet<T> {
-    fn insert(&mut self, item: T) {
-        Self::insert(self, item);
-    }
-
-    fn len(&self) -> usize {
-        Self::len(self)
     }
 }
 
@@ -185,9 +160,9 @@ impl Pos {
 
 type Data = (Direction, u8);
 
-fn parse(data: &str) -> Result<Vec<Data>, anyhow::Error> {
+fn parse(data: &str) -> anyhow::Result<Vec<Data>> {
     data.lines()
-        .map(|line| -> Result<Data, anyhow::Error> {
+        .map(|line| {
             let (dir, n) = line.split_once(' ').unwrap();
             Ok((dir.parse()?, n.parse()?))
         })
