@@ -14,6 +14,7 @@ const DAYS: &[Solution] = &[
     yr2022_day7::SOLUTION,
     yr2022_day8::SOLUTION,
     yr2022_day9::SOLUTION,
+    yr2022_day10::SOLUTION,
 ];
 
 fn main() -> Result<(), std::io::Error> {
@@ -75,6 +76,7 @@ fn get_names(inp: &'static Solution) -> Vec<(String, aoc_any::SolutionFn, &'stat
 
 mod template;
 mod yr2022_day1;
+mod yr2022_day10;
 mod yr2022_day3;
 mod yr2022_day4;
 mod yr2022_day7;

@@ -1,13 +1,14 @@
-use anyhow::anyhow;
-use aoc_any::{BenchTimes, Info, Run, Solution};
-use gxhash::GxHashSet;
 use std::{
-    cmp::max,
     collections::{BTreeSet, HashSet},
     hash::{BuildHasher, Hash},
     ops::Sub,
     str::FromStr,
 };
+
+use anyhow::anyhow;
+use gxhash::GxHashSet;
+
+use aoc_any::{BenchTimes, Info, Run, Solution};
 
 #[rustfmt::skip]
 const EXAMPLE: &str = 
@@ -19,15 +20,6 @@ R 4
 D 1
 L 5
 R 2";
-
-const EXAMPLE2: &str = "R 5
-U 8
-L 8
-D 3
-R 17
-D 10
-L 25
-U 20";
 
 pub const SOLUTION: Solution = Solution {
     info: Info {
@@ -63,11 +55,6 @@ fn part2() -> u32 {
     do_part2(data, GxHashSet::default())
 }
 
-fn part1() -> u32 {
-    let data = parse(get_data()).unwrap();
-    do_part1(data, HashSet::new())
-}
-
 fn part1_btreeset() -> u32 {
     let data = parse(get_data()).unwrap();
     do_part1(data, BTreeSet::new())
@@ -94,9 +81,9 @@ trait Set<T> {
     fn len(&self) -> usize;
 }
 
-impl<T: std::cmp::Eq + std::hash::Hash, S: BuildHasher> Set<T> for HashSet<T, S> {
+impl<T: Eq + Hash, S: BuildHasher> Set<T> for HashSet<T, S> {
     fn insert(&mut self, item: T) {
-        HashSet::insert(self, item);
+        Self::insert(self, item);
     }
 
     fn len(&self) -> usize {
@@ -104,20 +91,20 @@ impl<T: std::cmp::Eq + std::hash::Hash, S: BuildHasher> Set<T> for HashSet<T, S>
     }
 }
 
-impl<T: std::cmp::Eq + std::hash::Hash + Ord> Set<T> for BTreeSet<T> {
+impl<T: Eq + Hash + Ord> Set<T> for BTreeSet<T> {
     fn insert(&mut self, item: T) {
-        BTreeSet::insert(self, item);
+        Self::insert(self, item);
     }
 
     fn len(&self) -> usize {
-        BTreeSet::len(self)
+        Self::len(self)
     }
 }
 
 fn do_part1(data: Vec<Data>, mut set: impl Set<Pos>) -> u32 {
     let mut head = Pos { x: 0, y: 0 };
     let mut tail = Pos { x: 0, y: 0 };
-    for (dir, times) in data.into_iter() {
+    for (dir, times) in data {
         // eprintln!("{dir:?} {times}");
         for _ in 0..times {
             head.apply(&dir);
@@ -166,35 +153,17 @@ fn update_tail_match(head: Pos, tail: &mut Pos) {
         // diagonal cases
         Pos { x: _, y: 2 | -2 } | Pos { x: 2 | -2, y: _ } => {
             let diagonal = head - *tail;
-            match diagonal {
-                Pos { x: 1 | 2, y: 2 | 1 } => {
-                    tail.x += 1;
-                    tail.y += 1;
-                }
-                Pos {
-                    x: -2 | -1,
-                    y: 1 | 2,
-                } => {
-                    tail.x -= 1;
-                    tail.y += 1;
-                }
-                Pos {
-                    x: 2 | 1,
-                    y: -1 | -2,
-                } => {
-                    tail.x += 1;
-                    tail.y -= 1;
-                }
-                Pos {
-                    x: -2 | -1,
-                    y: -1 | -2,
-                } => {
-                    tail.x -= 1;
-                    tail.y -= 1;
-                }
-                any => {
-                    unreachable!("{any:?} head: {head:?}, tail: {tail:?}");
-                }
+
+            if diagonal.y.is_positive() {
+                tail.y += 1;
+            } else {
+                tail.y -= 1;
+            }
+
+            if diagonal.x.is_positive() {
+                tail.x += 1;
+            } else {
+                tail.x -= 1;
             }
         }
 
@@ -225,27 +194,6 @@ fn parse(data: &str) -> Result<Vec<Data>, anyhow::Error> {
         .collect()
 }
 
-fn print_grid(head: &Pos, tail: &Pos) {
-    let max_x = max(max(head.x, tail.x), 5);
-    let max_y = max(max(head.y, tail.y), 5);
-
-    for y in (0..=max_y).rev() {
-        let mut buf: Vec<&str> = Vec::with_capacity(max_x as usize);
-        for x in 0..=max_x {
-            let pos = Pos { x, y };
-            if *head == pos {
-                buf.push("H");
-            } else if *tail == pos {
-                buf.push("T");
-            } else {
-                buf.push(".");
-            }
-        }
-        println!("{}", &buf.join(""));
-    }
-    println!();
-}
-
 #[derive(Debug)]
 enum Direction {
     Up,
@@ -267,6 +215,6 @@ impl FromStr for Direction {
     }
 }
 
-fn get_data() -> &'static str {
+const fn get_data() -> &'static str {
     include_str!("../inputs/day9-inp.txt")
 }

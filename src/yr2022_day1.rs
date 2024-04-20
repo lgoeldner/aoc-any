@@ -1,5 +1,9 @@
+use std::{
+    cmp::max,
+    io::{BufRead, BufReader},
+};
+
 use aoc_any::{BenchTimes, Info, ProblemResult, Run, Solution};
-use rayon::result;
 
 pub const SOLUTION: Solution = Solution {
     info: Info {
@@ -8,8 +12,8 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: BenchTimes::Many(10),
     },
-    part1: || 66186.into(),
-    part2: Some(|| 196804.into()),
+    part1: || 66_186.into(),
+    part2: Some(|| 196_804.into()),
     other: &[
         (
             "part1 heavy",
@@ -22,12 +26,6 @@ pub const SOLUTION: Solution = Solution {
             Run::No,
         ),
     ],
-};
-
-use std::{
-    cmp::max,
-    fs::read,
-    io::{BufRead, BufReader},
 };
 
 fn biginp() -> u32 {

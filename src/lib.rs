@@ -1,10 +1,10 @@
-use cli_table::{format::Justify, Color, Table};
-
 use core::time;
-use rayon::iter::ParallelBridge;
-use rayon::prelude::*;
 use std::fmt::{Debug, Display};
 use std::{fmt, time::Instant};
+
+use cli_table::{format::Justify, Color, Table};
+use rayon::iter::ParallelBridge;
+use rayon::prelude::*;
 
 pub type SolutionFn = fn() -> ProblemResult;
 
@@ -26,11 +26,20 @@ pub enum ProblemResult {
     Other(Box<dyn Debug + Send + Sync>),
 }
 
-impl From<u32> for ProblemResult {
-    fn from(value: u32) -> Self {
-        ProblemResult::Number(i64::from(value))
-    }
+// #[macro_use]
+macro_rules! impl_from_problem_num {
+    ( $($t:ty),* ) => {
+        $(
+        impl From<$t> for ProblemResult {
+            fn from(value: $t) -> Self {
+                ProblemResult::Number(value.try_into().unwrap())
+            }
+        }
+        )*
+    };
 }
+
+impl_from_problem_num! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
 
 impl std::fmt::Display for ProblemResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
