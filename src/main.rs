@@ -2,10 +2,11 @@
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::cast_possible_truncation)]
 
-use aoc_any::{time_bench_solution, Solution};
 use cli_table::WithTitle;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+
+use aoc_any::{time_bench_solution, Solution};
 
 const DAYS: &[Solution] = &[
     yr2022_day1::SOLUTION,
@@ -15,6 +16,7 @@ const DAYS: &[Solution] = &[
     yr2022_day8::SOLUTION,
     yr2022_day9::SOLUTION,
     yr2022_day10::SOLUTION,
+    yr2022_day11::SOLUTION,
 ];
 
 fn main() -> Result<(), std::io::Error> {
@@ -77,6 +79,7 @@ fn get_names(inp: &'static Solution) -> Vec<(String, aoc_any::SolutionFn, &'stat
 mod template;
 mod yr2022_day1;
 mod yr2022_day10;
+mod yr2022_day11;
 mod yr2022_day3;
 mod yr2022_day4;
 mod yr2022_day7;

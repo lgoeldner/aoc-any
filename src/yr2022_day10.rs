@@ -19,16 +19,23 @@ pub const SOLUTION: Solution = Solution {
             Box::new(())
         })
     }),
-    other: &[(
-        "part1 example",
-        || do_part1(TEST_DATA).unwrap().into(),
-        Run::No,
-    ),
+    other: &[
+        (
+            "part1 example",
+            || do_part1(TEST_DATA).unwrap().into(),
+            Run::No,
+        ),
         (
             "part2 printed",
-            || ProblemResult::Other(Box::new(do_part2(DATA).unwrap())),
+            || {
+                ProblemResult::Other({
+                    eprintln!("{}", do_part2(DATA).unwrap());
+                    Box::new(())
+                })
+            },
             Run::No,
-        )],
+        ),
+    ],
 };
 
 const DATA: &str = include_str!("../inputs/day10-inp.txt");

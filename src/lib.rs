@@ -1,5 +1,6 @@
 use core::time;
 use std::fmt::{Debug, Display};
+use std::time::Duration;
 use std::{fmt, time::Instant};
 
 use cli_table::{format::Justify, Color, Table};
@@ -200,12 +201,13 @@ pub fn time_bench_solution(
             .collect::<Vec<_>>()
     };
 
+    let alt_start = Instant::now();
     let output = f();
     let avg_time = runs
         .iter()
         .sum::<time::Duration>()
         .checked_div(runs.len() as u32)
-        .unwrap_or_default();
+        .unwrap_or_else(|| alt_start.elapsed());
 
     BenchRun {
         output,
