@@ -11,7 +11,7 @@ pub const SOLUTION: Solution = Solution {
         name: "Monkey in the Middle",
         day: 11,
         year: 2022,
-        bench: aoc_any::BenchTimes::None,
+        bench: aoc_any::BenchTimes::Default,
     },
     part1: || part1(DATA).into(),
     part2: Some(|| part2(DATA).into()),
@@ -150,7 +150,7 @@ fn parse(data: &str) -> Vec<RefCell<Monkey>> {
 }
 
 fn parse_monkey(data: &str) -> Monkey {
-    let mut lines = data.lines();
+    let mut lines = data.lines().skip(1);
 
     let items = {
         let line = lines.next().unwrap();

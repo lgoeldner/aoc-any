@@ -1,6 +1,5 @@
 use core::time;
 use std::fmt::{Debug, Display};
-use std::time::Duration;
 use std::{fmt, time::Instant};
 
 use cli_table::{format::Justify, Color, Table};
@@ -27,7 +26,6 @@ pub enum ProblemResult {
     Other(Box<dyn Debug + Send + Sync>),
 }
 
-// #[macro_use]
 macro_rules! impl_from_problem_num {
     ( $($t:ty),* ) => {
         $(
