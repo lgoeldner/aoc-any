@@ -8,6 +8,8 @@ use rayon::prelude::*;
 
 pub type SolutionFn = fn() -> ProblemResult;
 
+mod get_input;
+
 pub struct Solution {
     pub part1: fn() -> ProblemResult,
     pub part2: Option<fn() -> ProblemResult>,
@@ -57,6 +59,12 @@ pub struct Info {
     /// default if None, else number of times to run. 0 if only run
     pub bench: BenchTimes,
     // enable if part 2 should be run
+}
+
+impl Solution {
+    fn get_datetuple(&self) -> (u16, u8) {
+        (self.info.year, self.info.day)
+    }
 }
 
 #[derive(Debug)]
