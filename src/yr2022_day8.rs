@@ -403,10 +403,5 @@ fn parse(data: &str) -> Data {
 }
 
 const fn get_data() -> &'static str {
-    // if cfg!(debug_assertions) {
-    //     include_str!("../inputs/day8-test.txt")
-    // } else {
-    //     include_str!("../inputs/day8-inp.txt")
-    // }
     include_str!("../inputs/day8-inp.txt")
 }
