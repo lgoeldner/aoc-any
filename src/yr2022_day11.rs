@@ -1,12 +1,10 @@
-use std::cell::RefCell;
-use std::convert::Into;
+use std::{cell::RefCell, convert::Into, sync::OnceLock};
 
 use once_cell::sync::Lazy;
 use regex::Regex;
 
 use aoc_any::{Info, Solution};
-
-use crate::yr2022_day11::ops::Op;
+use ops::Op;
 
 pub const SOLUTION: Solution = Solution {
     info: Info {
@@ -16,11 +14,11 @@ pub const SOLUTION: Solution = Solution {
         bench: aoc_any::BenchTimes::None,
     },
     part1: || part1(DATA).into(),
-    part2: Some(|| part2(TEST_EXAMPLE).into()),
+    part2: Some(|| part2(DATA).into()),
     other: &[],
 };
 
-const TEST_EXAMPLE: &str = include_str!("../inputs/2022-day11-test.txt");
+const _TEST_EXAMPLE: &str = include_str!("../inputs/2022-day11-test.txt");
 const DATA: &str = include_str!("../inputs/2022-day11-inp.txt");
 
 fn part1(data: &str) -> u64 {
@@ -44,17 +42,8 @@ fn part1(data: &str) -> u64 {
 fn part2(data: &str) -> u64 {
     let parsed = parse(data);
 
-    for round_idx in 1..=10_000 {
+    for _ in 1..=10_000 {
         do_round2(&parsed);
-        if round_idx == 20 || round_idx == 1000 {
-            dbg!(&parsed
-                .iter()
-                .map(|it| {
-                    let m = it.borrow();
-                    (m.idx, m.inspected)
-                })
-                .collect::<Vec<_>>());
-        }
     }
 
     let mut parsed = parsed
@@ -62,15 +51,16 @@ fn part2(data: &str) -> u64 {
         .map(|it| it.borrow().inspected)
         .collect::<Vec<_>>();
     parsed.sort_unstable();
-    dbg!(&parsed);
-    // parsed.reverse();
 
     // take the last two and multiply
     parsed.into_iter().rev().take(2).product()
 }
 
 fn do_round2(parsed: &Vec<RefCell<Monkey>>) {
-    let supermodulo: u64 = parsed.iter().map(|it| it.borrow().test.0).product();
+    static DIV_PROD: OnceLock<u64> = OnceLock::new();
+    let divisor_product: &u64 =
+        DIV_PROD.get_or_init(|| parsed.iter().map(|it| it.borrow().test.0).product());
+
     let mut monkey_items;
     for monkey in parsed {
         // take the items from the monkey
@@ -81,10 +71,11 @@ fn do_round2(parsed: &Vec<RefCell<Monkey>>) {
         // divide by three
         // move the item to the appropriate monkey
         for mut item_worrylevel in monkey_items {
-            // monkey.borrow_mut().inspected += 1;
             let monkey = monkey.borrow();
 
-            item_worrylevel %= supermodulo;
+            item_worrylevel %= divisor_product;
+
+            item_worrylevel = monkey.operation.perform(item_worrylevel);
 
             let throw_to_monkey = if monkey.test.check(item_worrylevel) {
                 monkey.true_target
@@ -144,7 +135,6 @@ impl Test {
 #[derive(Debug)]
 struct Monkey {
     inspected: u64,
-    idx: u8,
     items: Vec<u64>,
     operation: Op,
     test: Test,
@@ -161,11 +151,6 @@ fn parse(data: &str) -> Vec<RefCell<Monkey>> {
 
 fn parse_monkey(data: &str) -> Monkey {
     let mut lines = data.lines();
-
-    let idx = {
-        let line = lines.next().unwrap();
-        line["Monkey ".len()..line.len() - 1].parse().unwrap()
-    };
 
     let items = {
         let line = lines.next().unwrap();
@@ -217,7 +202,6 @@ fn parse_monkey(data: &str) -> Monkey {
     };
 
     Monkey {
-        idx,
         items,
         operation,
         test,
