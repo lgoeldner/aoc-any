@@ -12,24 +12,24 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: BenchTimes::Once,
     },
-    part1: || do_part1(DATA).unwrap().into(),
-    part2: Some(|| {
+    part1: |data| do_part1(data).unwrap().into(),
+    part2: Some(|data| {
         ProblemResult::Other({
-            let _ = do_part2(DATA);
+            let _ = do_part2(data);
             Box::new(())
         })
     }),
     other: &[
         (
             "part1 example",
-            || do_part1(TEST_DATA).unwrap().into(),
+            |_| do_part1(TEST_DATA).unwrap().into(),
             Run::No,
         ),
         (
             "part2 printed",
-            || {
+            |data| {
                 ProblemResult::Other({
-                    eprintln!("{}", do_part2(DATA).unwrap());
+                    eprintln!("{}", do_part2(data).unwrap());
                     Box::new(())
                 })
             },
@@ -38,7 +38,7 @@ pub const SOLUTION: Solution = Solution {
     ],
 };
 
-const DATA: &str = include_str!("../inputs/day10-inp.txt");
+// const DATA: &str = include_str!("../inputs/day10-inp.txt");
 
 const TEST_DATA: &str = include_str!("../inputs/day10-test.txt");
 

@@ -13,8 +13,8 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: aoc_any::BenchTimes::Default,
     },
-    part1: || part1(DATA).into(),
-    part2: Some(|| part2(DATA).into()),
+    part1: |data| part1(data).into(),
+    part2: Some(|data| part2(data).into()),
     other: &[],
 };
 

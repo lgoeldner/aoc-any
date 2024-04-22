@@ -11,8 +11,8 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
     },
     other: &[],
-    part1: || ProblemResult::Number(part1().try_into().unwrap()),
-    part2: Some(|| ProblemResult::Number(part2().try_into().unwrap())),
+    part1: |_| ProblemResult::Number(part1().try_into().unwrap()),
+    part2: Some(|_| ProblemResult::Number(part2().try_into().unwrap())),
 };
 
 pub fn part1() -> u64 {

@@ -18,13 +18,13 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
         year: 2022,
         bench: BenchTimes::Many(100),
     },
-    part1: || part1nd().into(),
+    part1: |_| part1nd().into(),
     part2: Some(|| ProblemResult::Number(part2().try_into().unwrap())),
     other: &[
         ("part1 legacy", || part1().into(), Run::No),
         (
             "heavy input, 1 + 2",
-            || ProblemResult::Other(Box::new(big_inp_1and2())),
+            |_| ProblemResult::Other(Box::new(big_inp_1and2())),
             Run::No,
         ),
     ],

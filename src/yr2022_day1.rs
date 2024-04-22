@@ -12,17 +12,17 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: BenchTimes::Many(10),
     },
-    part1: || 66_186.into(),
-    part2: Some(|| 196_804.into()),
+    part1: |_| 66_186.into(),
+    part2: Some(|_| 196_804.into()),
     other: &[
         (
             "part1 heavy",
-            || ProblemResult::Other(Box::new(biginp())),
+            |_| ProblemResult::Other(Box::new(biginp())),
             Run::No,
         ),
         (
             "part2 heavy",
-            || ProblemResult::Other(Box::new(biginp2())),
+            |_| ProblemResult::Other(Box::new(biginp2())),
             Run::No,
         ),
     ],

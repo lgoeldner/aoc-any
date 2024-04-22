@@ -10,8 +10,8 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
         year: 2022,
         bench: BenchTimes::Many(100),
     },
-    part1: || ProblemResult::Number(i64::from(part1().unwrap())),
-    part2: Some(|| ProblemResult::Number(i64::from(part2().unwrap()))),
+    part1: |_| ProblemResult::Number(i64::from(part1().unwrap())),
+    part2: Some(|_| ProblemResult::Number(i64::from(part2().unwrap()))),
     other: &[],
 };
 

@@ -10,8 +10,8 @@ pub const SOLUTION: Solution = Solution {
         bench: BenchTimes::Default,
     },
     other: &[],
-    part1: || part1().into(),
-    part2: Some(|| part2().into()),
+    part1: |_| part1().into(),
+    part2: Some(|_| part2().into()),
 };
 
 pub fn part1() -> u32 {

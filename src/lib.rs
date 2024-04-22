@@ -1,34 +1,126 @@
 use core::time;
-use std::{fmt, time::Instant};
 use std::fmt::{Debug, Display};
+use std::time::Instant;
 
-use cli_table::{Color, format::Justify, Table};
+use cli_table::Table;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::*;
 
-pub type SolutionFn = fn() -> ProblemResult;
+use types::*;
 
 mod get_input;
 
-pub struct Solution {
-    pub part1: fn(&str) -> ProblemResult,
-    pub part2: Option<fn(&str) -> ProblemResult>,
-    pub info: Info,
-    pub other: &'static [(&'static str, SolutionFn, Run)],
-}
+pub mod types {
+    use core::time;
+    use std::fmt::{self, Debug, Display};
 
-pub enum Run {
-    No,
-    Yes,
-}
+    use cli_table::{format::Justify, Color, Table};
 
-#[derive(Debug)]
-pub enum ProblemResult {
-    Number(i64),
-    Other(Box<dyn Debug + Send + Sync>),
-}
+    use crate::get_input::InputCache;
 
-macro_rules! impl_from_problem_num {
+    pub type SolutionFn = fn(&str) -> ProblemResult;
+
+    pub struct AocRuntime {
+        pub input_cache: InputCache,
+    }
+
+    impl AocRuntime {
+        pub fn new() -> anyhow::Result<Self> {
+            Ok(Self {
+                input_cache: InputCache::new()?,
+            })
+        }
+    }
+
+    pub struct Solution {
+        pub part1: fn(&str) -> ProblemResult,
+        pub part2: Option<fn(&str) -> ProblemResult>,
+        pub info: Info,
+        pub other: &'static [(&'static str, SolutionFn, Run)],
+    }
+
+    pub enum Run {
+        No,
+        Yes,
+    }
+
+    #[derive(Debug)]
+    pub enum ProblemResult {
+        Number(i64),
+        Other(Box<dyn Debug + Send + Sync>),
+    }
+
+    #[derive(Debug)]
+    pub struct Info {
+        pub name: &'static str,
+        pub day: u8,
+        pub year: u16,
+        pub bench: BenchTimes,
+    }
+
+    #[derive(Debug)]
+    pub enum BenchTimes {
+        None,
+        Default,
+        Once,
+        Many(usize),
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone)]
+    pub enum Part {
+        One,
+        Two,
+        Other(String),
+    }
+
+    #[derive(Table)]
+    #[non_exhaustive]
+    pub struct BenchRun {
+        #[table(title = "year", justify = "Justify::Right")]
+        pub year: u16,
+        #[table(title = "day")]
+        pub day: u8,
+
+        #[table(title = "name")]
+        pub name: &'static str,
+        #[table(title = "label")]
+        pub label: String,
+
+        #[table(display_fn = "display_duration", title = "avg", color = "Color::Cyan")]
+        pub avg_time: time::Duration,
+        #[table(display_fn = "display_duration", title = "elapsed", skip)]
+        pub elapsed: time::Duration,
+        #[table(title = "Benchmarked", display_fn = "_display_times", skip)]
+        pub times: usize,
+
+        #[table(title = "result", color = "Color::Green")]
+        pub output: ProblemResult,
+    }
+
+    fn display_duration(inp: &time::Duration) -> impl Display {
+        format!("{inp:?}")
+    }
+
+    fn _display_times(inp: &usize) -> impl Display {
+        format!("{inp}x")
+    }
+
+    impl Solution {
+        pub fn get_datetuple(&self) -> (u16, u8) {
+            (self.info.year, self.info.day)
+        }
+    }
+
+    impl Display for ProblemResult {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                ProblemResult::Number(n) => write!(f, "{n}"),
+                ProblemResult::Other(any) => write!(f, "{any:?}"),
+            }
+        }
+    }
+
+    macro_rules! impl_from_problem_num {
     ( $($t:ty),* ) => {
         $(
         impl From<$t> for ProblemResult {
@@ -40,39 +132,7 @@ macro_rules! impl_from_problem_num {
     };
 }
 
-impl_from_problem_num! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
-
-impl Display for ProblemResult {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ProblemResult::Number(n) => write!(f, "{n}"),
-            ProblemResult::Other(any) => write!(f, "{any:?}"),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct Info {
-    pub name: &'static str,
-    pub day: u8,
-    pub year: u16,
-    /// default if None, else number of times to run. 0 if only run
-    pub bench: BenchTimes,
-    // enable if part 2 should be run
-}
-
-impl Solution {
-    fn get_datetuple(&self) -> (u16, u8) {
-        (self.info.year, self.info.day)
-    }
-}
-
-#[derive(Debug)]
-pub enum BenchTimes {
-    None,
-    Default,
-    Once,
-    Many(usize),
+    impl_from_problem_num! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
 }
 
 pub fn time_dbg<R: Debug>(label: impl Display, f: impl Fn() -> R) -> R {
@@ -108,43 +168,35 @@ where
     result
 }
 
-// pub struct BenchRun {
-//     pub output: ProblemResult,
-//     pub avg_time: time::Duration,
-//     pub elapsed: time::Duration,
-//     pub times: usize,
-// }
+pub fn bench_solutions(days: &'static [Solution], runtime: &mut AocRuntime) -> Vec<BenchRun> {
+    let mut runs = Vec::new();
 
-#[derive(Table)]
-#[non_exhaustive]
-pub struct BenchRun {
-    #[table(title = "year", justify = "Justify::Right")]
-    pub year: u16,
-    #[table(title = "day")]
-    pub day: u8,
+    for day in days.iter().rev() {
+        let ref input = runtime.input_cache.get(day).unwrap();
+        runs.push(time_bench_solution(
+            input,
+            &day.info,
+            "part1".to_owned(),
+            day.part1,
+        ));
+        if let Some(part2) = day.part2 {
+            runs.push(time_bench_solution(
+                input,
+                &day.info,
+                "part2".to_owned(),
+                part2,
+            ));
+        }
 
-    #[table(title = "name")]
-    pub name: &'static str,
-    #[table(title = "label")]
-    pub label: String,
+        let iter = day.other.iter().filter_map(|(label, f, run)| {
+            crate::some_if! {
+                matches!(run, Run::Yes) => time_bench_solution(input, &day.info, label.to_string(), f)
+            }
+        });
 
-    #[table(display_fn = "display_duration", title = "avg", color = "Color::Cyan")]
-    pub avg_time: time::Duration,
-    #[table(display_fn = "display_duration", title = "elapsed", skip)]
-    pub elapsed: time::Duration,
-    #[table(title = "Benchmarked", display_fn = "_display_times", skip)]
-    pub times: usize,
-
-    #[table(title = "result", color = "Color::Green")]
-    pub output: ProblemResult,
-}
-
-fn display_duration(inp: &time::Duration) -> impl Display {
-    format!("{inp:?}")
-}
-
-fn _display_times(inp: &usize) -> impl Display {
-    format!("{inp}x")
+        runs.extend(iter)
+    }
+    runs
 }
 
 #[macro_export]
@@ -159,9 +211,10 @@ macro_rules! some_if {
 }
 
 pub fn time_bench_solution(
+    input: &str,
     info: &Info,
     label: String,
-    f: impl Fn() -> ProblemResult + Send + Sync,
+    f: impl Fn(&str) -> ProblemResult + Send + Sync,
 ) -> BenchRun {
     let times = match info.bench {
         BenchTimes::None => 0,
@@ -173,7 +226,7 @@ pub fn time_bench_solution(
     if label.contains("heavy") {
         eprintln!("Running heavy benchmark");
         let start = Instant::now();
-        let output = f();
+        let output = f(input);
         return BenchRun {
             avg_time: start.elapsed(),
             elapsed: start.elapsed(),
@@ -193,7 +246,7 @@ pub fn time_bench_solution(
             .par_bridge()
             .map(|_| {
                 let time = Instant::now();
-                let _ = f();
+                let _ = f(input);
                 time.elapsed()
             })
             .collect::<Vec<_>>()
@@ -201,14 +254,14 @@ pub fn time_bench_solution(
         (0..times)
             .map(|_| {
                 let time = Instant::now();
-                let _ = f();
+                let _ = f(input);
                 time.elapsed()
             })
             .collect::<Vec<_>>()
     };
 
     let alt_start = Instant::now();
-    let output = f();
+    let output = f(input);
     let avg_time = runs
         .iter()
         .sum::<time::Duration>()
@@ -251,36 +304,6 @@ where
     let result = f();
     eprintln!("{label} resulted in {result:?}",);
     result
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Part {
-    One,
-    Two,
-    Other(String),
-}
-
-pub fn bench_solutions(days: &'static [Solution]) -> Vec<BenchRun> {
-    let mut runs = Vec::new();
-    for day in days.iter().rev() {
-        runs.push(time_bench_solution(
-            &day.info,
-            "part1".to_owned(),
-            day.part1,
-        ));
-        if let Some(part2) = day.part2 {
-            runs.push(time_bench_solution(&day.info, "part2".to_owned(), part2));
-        }
-
-        let iter = day.other.iter().filter_map(|(label, f, run)| {
-            some_if! {
-                matches!(run, Run::Yes) => time_bench_solution(&day.info, label.to_string(), f)
-            }
-        });
-
-        runs.extend(iter)
-    }
-    runs
 }
 
 /// utility function
