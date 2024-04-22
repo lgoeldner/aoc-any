@@ -1,11 +1,16 @@
 use std::cell::RefCell;
+use std::fs;
+use std::path::Path;
 use std::time::Duration;
 
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use gxhash::GxHashMap;
+use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use ureq::Agent;
 
-use crate::Solution;
+use crate::types::DateProvider;
 
 pub struct InputCache {
     map: GxHashMap<(u16, u8), String>,
@@ -16,12 +21,12 @@ impl InputCache {
     pub fn new() -> anyhow::Result<Self> {
         dotenvy::dotenv()?;
 
-        let mut cookies = cookie_store::CookieStore::new(None);
-        let session = ureq::Cookie::new(
+        let session_cookie = ureq::Cookie::new(
             "session",
             std::env::var("AOC_TOKEN").context("Please set the env-var AOC_TOKEN")?,
         );
-        cookies.insert_raw(&session, &"https://adventofcode.com/".parse()?)?;
+        let mut cookies = cookie_store::CookieStore::new(None);
+        cookies.insert_raw(&session_cookie, &"https://adventofcode.com/".parse()?)?;
 
         let agent: Agent = ureq::AgentBuilder::new()
             .timeout_read(Duration::from_secs(5))
@@ -30,70 +35,87 @@ impl InputCache {
             .build();
 
         Ok(Self {
-            map: GxHashMap::default(),
+            map: Self::retrieve_local_cache().unwrap_or_default(),
             agent,
         })
     }
 
-    fn get_input(&self, day: &Solution) -> anyhow::Result<String> {
+    fn get_web_input(&self, day: &dyn DateProvider) -> anyhow::Result<String> {
         let url = format!(
             "https://adventofcode.com/{}/day/{}/input",
-            day.info.year, day.info.day
+            day.year(),
+            day.day(),
         );
 
         Ok(self.agent.get(&url).call()?.into_string()?)
     }
 
-    // clones the data
-    // pub fn get<'a>(&'a mut self, solution: &Solution) -> anyhow::Result<&'a String> {
-    //     // let selfref = std::sync::Mutex::new(self);
-    //     //
-    //     // let x = match selfref.lock().unwrap().map.entry(solution.get_datetuple()) {
-    //     //     Entry::Occupied(e) => e.get().clone(),
-    //     //     Entry::Vacant(e) => e
-    //     //         .insert(selfref.lock().unwrap().get_input(solution).unwrap())
-    //     //         .clone(),
-    //     // };
-    // 
-    //     //Ok(x)
-    // 
-    //     let res = self.map.get(&solution.get_datetuple());
-    // 
-    //     if res.is_some() {
-    //         return res.ok_or(anyhow!("NO"));
-    //     }
-    // 
-    //     let input = self.get_input(solution)?;
-    //     self.map.insert(solution.get_datetuple(), input.clone());
-    //     self.map.get(&solution.get_datetuple()).ok_or(anyhow!("NO"))
-    // }
-
-
-    pub fn get<'a>(
-        &'a mut self,
-        solution: &'a Solution,
-    ) -> Result<&'a String, anyhow::Error> {
-        
+    pub fn get(&mut self, solution: &dyn DateProvider) -> Result<String, anyhow::Error> {
         let selfcell = RefCell::new(self);
-        
+
         if let Some(res) = selfcell.borrow().map.get(&solution.get_datetuple()) {
-            return Ok(res);
+            return Ok(res.clone());
         }
 
-        let input = self.get_input(solution)?;
-        let value = input.clone();
-        self.map.insert(solution.get_datetuple(), value);
+        let value = selfcell.borrow().get_web_input(solution)?;
+        //  let value = input;
 
-        self.map
+        selfcell
+            .borrow_mut()
+            .map
+            .insert(solution.get_datetuple(), value);
+
+        let res = selfcell
+            .borrow()
+            .map
             .get(&solution.get_datetuple())
-            .ok_or_else(|| anyhow!("NO"))
+            .ok_or_else(|| unreachable!())
+            .cloned();
+
+        if let Ok(ref res) = res {
+            assert_ne!(
+                "Puzzle inputs differ by user.  Please log in to get your puzzle input.",
+                res
+            );
+        }
+
+        res
+    }
+
+    fn retrieve_local_cache() -> Option<GxHashMap<(u16, u8), String>> {
+        if let Ok(ser) = std::fs::read_to_string(*SAVED_LOCATION) {
+            Some(serde_json::from_str::<SerdeMap>(&ser).ok()?.0)
+        } else {
+            None
+        }
+    }
+}
+
+static SAVED_LOCATION: Lazy<&Path> = Lazy::new(|| Path::new("./.cache/aoc_input.json"));
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+struct SerdeMap(#[serde_as(as = "Vec<(_, _)>")] GxHashMap<(u16, u8), String>);
+
+impl Drop for InputCache {
+    fn drop(&mut self) {
+        let serde_map = &SerdeMap(std::mem::take(&mut self.map));
+
+        if let Some(parent) = SAVED_LOCATION.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+
+        if let Ok(ser) = serde_json::to_string(serde_map) {
+            let _ = std::fs::write(*SAVED_LOCATION, ser)
+                .inspect_err(|err| eprintln!("could not save map, err: {err}"));
+        }
     }
 }
 
 #[test]
 fn test() {
     let mut cache = InputCache::new().unwrap();
-    let day = Solution {
+    let day = crate::Solution {
         info: crate::types::Info {
             name: "Rucksack Reorganization",
             day: 3,
@@ -105,5 +127,5 @@ fn test() {
         part2: Some(|_| todo!()),
     };
     let inp = cache.get(&day).unwrap();
-    println!("{}", inp);
+    println!("{inp}");
 }

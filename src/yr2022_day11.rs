@@ -19,7 +19,7 @@ pub const SOLUTION: Solution = Solution {
 };
 
 const _TEST_EXAMPLE: &str = include_str!("../inputs/2022-day11-test.txt");
-const DATA: &str = include_str!("../inputs/2022-day11-inp.txt");
+// const DATA: &str = include_str!("../inputs/2022-day11-inp.txt");
 
 fn part1(data: &str) -> u64 {
     let parsed = parse(data);
@@ -143,7 +143,7 @@ struct Monkey {
 }
 
 fn parse(data: &str) -> Vec<RefCell<Monkey>> {
-    data.split("\r\n\r\n")
+    data.split("\n\n")
         .map(parse_monkey)
         .map(RefCell::new)
         .collect()

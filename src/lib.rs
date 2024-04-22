@@ -1,12 +1,21 @@
+#![warn(clippy::pedantic, clippy::nursery)]
+#![allow(
+    clippy::missing_errors_doc,
+    missing_docs,
+    clippy::missing_panics_doc,
+    clippy::missing_safety_doc,
+    clippy::cast_possible_truncation,
+    clippy::reversed_empty_ranges
+)]
+
 use core::time;
 use std::fmt::{Debug, Display};
 use std::time::Instant;
 
-use cli_table::Table;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::*;
 
-use types::*;
+pub use types::*;
 
 mod get_input;
 
@@ -14,9 +23,12 @@ pub mod types {
     use core::time;
     use std::fmt::{self, Debug, Display};
 
-    use cli_table::{format::Justify, Color, Table};
+    use cli_table::{format::Justify, Color, Table, WithTitle};
+    use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 
-    use crate::get_input::InputCache;
+	use anyhow::anyhow;
+
+    use crate::{get_input::InputCache, time_bench_solution};
 
     pub type SolutionFn = fn(&str) -> ProblemResult;
 
@@ -25,11 +37,76 @@ pub mod types {
     }
 
     impl AocRuntime {
+        /// Creates a new `AocRuntime`
+        ///
+        /// # Errors
+        /// - `InputCache` fails to build
+        ///     => dotenv fails to load
         pub fn new() -> anyhow::Result<Self> {
             Ok(Self {
                 input_cache: InputCache::new()?,
             })
         }
+
+        pub fn run(&mut self, days: &'static [Solution]) -> anyhow::Result<()> {
+            if let Some(usr_query) = std::env::args().nth(1) {
+                let matcher = SkimMatcherV2::default();
+
+                let matched_benches = days
+                    .iter()
+                    .flat_map(get_names)
+                    // if the name is matched, return only the name
+                    .filter_map(|name| matcher.fuzzy_match(&name.0, &usr_query).map(|_| name))
+                    .collect::<Vec<_>>();
+
+                if matched_benches.is_empty() {
+                    anyhow::bail!("No Matches found!");
+                }
+
+                let result = matched_benches
+                    .into_iter()
+                    .map(|(label, f, info)| {
+                        let input = self.input_cache.get(info).unwrap();
+                        time_bench_solution(&input, info, label, f)
+                    })
+                    .collect::<Vec<_>>();
+
+                return cli_table::print_stdout(result.with_title())
+                    .map_err(|_| anyhow!("Failed to print table"));
+            }
+
+            let runs = crate::bench_solutions(days, self);
+            cli_table::print_stdout(runs.with_title()).map_err(|_| anyhow!("Failed to print table"))
+        }
+    }
+
+    /// formats the names for each function available for the Solution, returns a Vec of (name, fn)
+    // avoids type golfing
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn get_names(
+        inp: &'static Solution,
+    ) -> Vec<(String, crate::SolutionFn, &'static crate::Info)> {
+        let x = inp.part2.map_or_else(
+            || vec![("part1", inp.part1)],
+            |part2| vec![("part2", part2), ("part1", inp.part1)],
+        );
+
+        let others = inp.other.iter().map(|(a, b, _)| (*a, *b));
+
+        // x.into_iter()
+        //     .chain(others)
+
+        others
+            .into_iter()
+            .chain(x)
+            .map(|s| {
+                (
+                    format!("{} day{:0>2}: {}", inp.info.year, inp.info.day, s.0),
+                    s.1,
+                    &inp.info,
+                )
+            })
+            .collect::<Vec<_>>()
     }
 
     pub struct Solution {
@@ -101,21 +178,50 @@ pub mod types {
         format!("{inp:?}")
     }
 
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     fn _display_times(inp: &usize) -> impl Display {
         format!("{inp}x")
     }
 
-    impl Solution {
-        pub fn get_datetuple(&self) -> (u16, u8) {
+    pub trait DateProvider {
+        fn get_datetuple(&self) -> (u16, u8);
+        fn day(&self) -> u8;
+        fn year(&self) -> u16;
+    }
+
+    impl DateProvider for Solution {
+        fn get_datetuple(&self) -> (u16, u8) {
             (self.info.year, self.info.day)
+        }
+
+        fn day(&self) -> u8 {
+            self.info.day
+        }
+
+        fn year(&self) -> u16 {
+            self.info.year
+        }
+    }
+
+    impl DateProvider for Info {
+        fn get_datetuple(&self) -> (u16, u8) {
+            (self.year, self.day)
+        }
+
+        fn day(&self) -> u8 {
+            self.day
+        }
+
+        fn year(&self) -> u16 {
+            self.year
         }
     }
 
     impl Display for ProblemResult {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
-                ProblemResult::Number(n) => write!(f, "{n}"),
-                ProblemResult::Other(any) => write!(f, "{any:?}"),
+                Self::Number(n) => write!(f, "{n}"),
+                Self::Other(any) => write!(f, "{any:?}"),
             }
         }
     }
@@ -172,13 +278,16 @@ pub fn bench_solutions(days: &'static [Solution], runtime: &mut AocRuntime) -> V
     let mut runs = Vec::new();
 
     for day in days.iter().rev() {
-        let ref input = runtime.input_cache.get(day).unwrap();
+        let input = &runtime.input_cache.get(day).unwrap();
+        // part1
         runs.push(time_bench_solution(
             input,
             &day.info,
             "part1".to_owned(),
             day.part1,
         ));
+
+        // part2
         if let Some(part2) = day.part2 {
             runs.push(time_bench_solution(
                 input,
@@ -188,13 +297,14 @@ pub fn bench_solutions(days: &'static [Solution], runtime: &mut AocRuntime) -> V
             ));
         }
 
+        // others
         let iter = day.other.iter().filter_map(|(label, f, run)| {
             crate::some_if! {
-                matches!(run, Run::Yes) => time_bench_solution(input, &day.info, label.to_string(), f)
+                matches!(run, Run::Yes) => time_bench_solution(input, &day.info, (*label).to_string(), f)
             }
         });
 
-        runs.extend(iter)
+        runs.extend(iter);
     }
     runs
 }
@@ -285,7 +395,7 @@ where
     R: Send + Sync + Debug,
 {
     let start = Instant::now();
-    let timed = (0..times)
+    let benched = (0..times)
         .par_bridge()
         .map(|_| {
             let time = Instant::now();
@@ -296,8 +406,8 @@ where
 
     eprintln!(
         "Over {times} Runs, average time Was: {:?}, elapsed runtime in function: {:?}, actual elapsed: {:?}",
-        timed.iter().sum::<time::Duration>() / times as u32,
-        timed.iter().sum::<time::Duration>(),
+        benched.iter().sum::<time::Duration>() / times as u32,
+        benched.iter().sum::<time::Duration>(),
 		start.elapsed()
     );
 

@@ -18,10 +18,10 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
         year: 2022,
         bench: BenchTimes::Many(100),
     },
-    part1: |_| part1nd().into(),
-    part2: Some(|| ProblemResult::Number(part2().try_into().unwrap())),
+    part1: |data| part1nd(data).into(),
+    part2: Some(|_| ProblemResult::Number(part2().try_into().unwrap())),
     other: &[
-        ("part1 legacy", || part1().into(), Run::No),
+        ("part1 legacy", |_| part1().into(), Run::No),
         (
             "heavy input, 1 + 2",
             |_| ProblemResult::Other(Box::new(big_inp_1and2())),
@@ -75,20 +75,19 @@ fn do_part1nd(data: Array2<TreeVisNd>) -> u32 {
     let res = inner_view
         .iter()
         // sum the number of visible trees inside the inner slice
-        .fold(0, |acc, item| acc + u32::from(item.1))
-        + {
-            // calculates the overhead for the outer two rows and columns
-            let (x, y) = data.dim();
-            // double each dimension for top and bottom row/column,
-            // and subtract 4 for overlapping corners
-            (x * 2 + y * 2 - 4) as u32
-        };
+        .fold(0, |acc, item| acc + u32::from(item.1));
 
-    res
+    res + {
+        // calculates the overhead for the outer two rows and columns
+        let (x, y) = data.dim();
+        // double each dimension for top and bottom row/column,
+        // and subtract 4 for overlapping corners
+        (x * 2 + y * 2 - 4) as u32
+    }
 }
 
-pub fn part1nd() -> u32 {
-    do_part1nd(parse_nd(get_data()))
+pub fn part1nd(data: &str) -> u32 {
+    do_part1nd(parse_nd(data))
 }
 
 pub fn part1() -> u32 {
