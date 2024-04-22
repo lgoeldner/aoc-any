@@ -1,8 +1,8 @@
 use core::time;
-use std::fmt::{Debug, Display};
 use std::{fmt, time::Instant};
+use std::fmt::{Debug, Display};
 
-use cli_table::{format::Justify, Color, Table};
+use cli_table::{Color, format::Justify, Table};
 use rayon::iter::ParallelBridge;
 use rayon::prelude::*;
 
@@ -11,8 +11,8 @@ pub type SolutionFn = fn() -> ProblemResult;
 mod get_input;
 
 pub struct Solution {
-    pub part1: fn() -> ProblemResult,
-    pub part2: Option<fn() -> ProblemResult>,
+    pub part1: fn(&str) -> ProblemResult,
+    pub part2: Option<fn(&str) -> ProblemResult>,
     pub info: Info,
     pub other: &'static [(&'static str, SolutionFn, Run)],
 }
