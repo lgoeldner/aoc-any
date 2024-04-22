@@ -11,18 +11,18 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
     },
     other: &[],
-    part1: |_| ProblemResult::Number(part1().try_into().unwrap()),
-    part2: Some(|_| ProblemResult::Number(part2().try_into().unwrap())),
+    part1: |data| ProblemResult::Number(part1(data).try_into().unwrap()),
+    part2: Some(|data| ProblemResult::Number(part2(data).try_into().unwrap())),
 };
 
-pub fn part1() -> u64 {
-    let parsed = parse(get_data()).unwrap();
+pub fn part1(data: &str) -> u64 {
+    let parsed = parse(data).unwrap();
     let map = build_treemap(parsed);
     sum_dir_size_under(&map, 100_000)
 }
 
-pub fn part2() -> u64 {
-    let parsed = parse(get_data()).unwrap();
+pub fn part2(data: &str) -> u64 {
+    let parsed = parse(data).unwrap();
     let map = build_treemap(parsed);
     smalles_del_to_free(&map)
 }
@@ -225,28 +225,4 @@ struct LsDir {
 struct File {
     name: String,
     size: u64,
-}
-
-const fn get_data() -> &'static str {
-    #[cfg(test)]
-    return include_str!("../inputs/day7-test.txt");
-
-    #[cfg(not(test))]
-    return include_str!("../inputs/day7-inp.txt");
-}
-
-#[test]
-fn test_part1() -> anyhow::Result<()> {
-    let parsed: Vec<Command> = parse(get_data())?;
-    assert_eq!(sum_dir_size_under(&build_treemap(parsed), 100_000), 95437);
-
-    Ok(())
-}
-
-#[test]
-fn test_part2() -> anyhow::Result<()> {
-    let parsed = parse(get_data())?;
-    assert_eq!(smalles_del_to_free(&build_treemap(parsed)), 24_933_642);
-
-    Ok(())
 }

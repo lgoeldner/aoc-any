@@ -10,8 +10,8 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
         year: 2022,
         bench: BenchTimes::Many(100),
     },
-    part1: |_| ProblemResult::Number(i64::from(part1().unwrap())),
-    part2: Some(|_| ProblemResult::Number(i64::from(part2().unwrap()))),
+    part1: |data| ProblemResult::Number(i64::from(part1(data).unwrap())),
+    part2: Some(|data| ProblemResult::Number(i64::from(part2(data).unwrap()))),
     other: &[],
 };
 
@@ -25,17 +25,14 @@ fn part2_withdata(data: &str) -> anyhow::Result<u32> {
     Ok(parsed.iter().filter(|r2| r2.overlaps()).count() as u32)
 }
 
-pub fn part1() -> anyhow::Result<u32> {
-    part1_withdata(&get_data())
+pub fn part1(data: &str) -> anyhow::Result<u32> {
+    part1_withdata(data)
 }
 
-pub fn part2() -> anyhow::Result<u32> {
-    part2_withdata(&get_data())
+pub fn part2(data: &str) -> anyhow::Result<u32> {
+    part2_withdata(data)
 }
 
-fn get_data() -> String {
-    include_str!("../inputs/day4-inp.txt").to_string()
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Range2 {

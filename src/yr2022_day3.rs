@@ -10,12 +10,12 @@ pub const SOLUTION: Solution = Solution {
         bench: BenchTimes::Default,
     },
     other: &[],
-    part1: |_| part1().into(),
-    part2: Some(|_| part2().into()),
+    part1: |data| part1(data).into(),
+    part2: Some(|data| part2(data).into()),
 };
 
-pub fn part1() -> u32 {
-    parse_1(&read_input())
+pub fn part1(data: &str) -> u32 {
+    parse_1(data)
         .map(|data: Data1<'_>| l_r_diff(&data))
         .map(char_to_prio)
         .sum()
@@ -29,10 +29,6 @@ fn l_r_diff(data: &Data1) -> char {
     let set1 = data.left.chars().collect::<HashSet<_>>();
     let set2 = data.right.chars().collect::<HashSet<_>>();
     *set1.intersection(&set2).next().unwrap()
-}
-
-fn read_input() -> String {
-    include_str!("../inputs/day3-inp.txt").to_owned()
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone)]
@@ -61,8 +57,8 @@ fn parse_2(data: &str) -> Vec<Group> {
         .collect()
 }
 
-pub fn part2() -> u32 {
-    parse_2(&read_input())
+pub fn part2(data: &str) -> u32 {
+    parse_2(data)
         .iter()
         // the intersection of the three sets
         .map(diff_char_in_group)

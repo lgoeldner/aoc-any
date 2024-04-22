@@ -19,7 +19,7 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
         bench: BenchTimes::Many(100),
     },
     part1: |data| part1nd(data).into(),
-    part2: Some(|_| ProblemResult::Number(part2().try_into().unwrap())),
+    part2: Some(|data| ProblemResult::Number(part2(data).try_into().unwrap())),
     other: &[
         ("part1 legacy", |_| part1().into(), Run::No),
         (
@@ -95,8 +95,8 @@ pub fn part1() -> u32 {
     to_visible_treecount(data)
 }
 
-pub fn part2() -> usize {
-    max_scenic_score(&parse_nd(get_data()))
+pub fn part2(data: &str) -> usize {
+    max_scenic_score(&parse_nd(data))
 }
 
 pub fn big_inp_1and2() -> (u32, usize) {

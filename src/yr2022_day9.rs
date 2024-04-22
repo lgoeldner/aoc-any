@@ -29,7 +29,7 @@ pub const SOLUTION: Solution = Solution {
         bench: BenchTimes::Once,
     },
     part1: |data| do_part1(parse(data).unwrap(), GxHashSet::default()).into(),
-    part2: Some(|_| part2().into()),
+    part2: Some(|data| part2(data).into()),
     other: &[
         ("BTreeSet part1", |_| part1_btreeset().into(), Run::No),
         (
@@ -50,8 +50,8 @@ pub const SOLUTION: Solution = Solution {
     ],
 };
 
-fn part2() -> u32 {
-    let data = parse(get_data()).unwrap();
+fn part2(data: &str) -> u32 {
+    let data = parse(data).unwrap();
     do_part2(data, GxHashSet::default())
 }
 
