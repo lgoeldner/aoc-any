@@ -31,7 +31,11 @@ pub const SOLUTION: Solution = Solution {
     part1: |data| do_part1(parse(data).unwrap(), GxHashSet::default()).into(),
     part2: Some(|data| part2(data).into()),
     other: &[
-        ("BTreeSet part1", |_| part1_btreeset().into(), Run::No),
+        (
+            "BTreeSet part1",
+            |data| part1_btreeset(data).into(),
+            Run::No,
+        ),
         (
             "GxHash part1",
             |data| do_part1(parse(data).unwrap(), GxHashSet::default()).into(),
@@ -55,8 +59,8 @@ fn part2(data: &str) -> u32 {
     do_part2(data, GxHashSet::default())
 }
 
-fn part1_btreeset() -> u32 {
-    let data = parse(get_data()).unwrap();
+fn part1_btreeset(data: &str) -> u32 {
+    let data = parse(data).unwrap();
     do_part1(data, BTreeSet::new())
 }
 
@@ -190,6 +194,6 @@ impl FromStr for Direction {
     }
 }
 
-const fn get_data() -> &'static str {
-    include_str!("../inputs/day9-inp.txt")
-}
+// const fn get_data() -> &'static str {
+//     include_str!("../inputs/day9-inp.txt")
+// }

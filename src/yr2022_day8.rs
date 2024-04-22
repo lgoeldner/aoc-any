@@ -21,7 +21,7 @@ pub const SOLUTION: aoc_any::Solution = aoc_any::Solution {
     part1: |data| part1nd(data).into(),
     part2: Some(|data| ProblemResult::Number(part2(data).try_into().unwrap())),
     other: &[
-        ("part1 legacy", |_| part1().into(), Run::No),
+        ("part1 legacy", |data| part1(data).into(), Run::No),
         (
             "heavy input, 1 + 2",
             |_| ProblemResult::Other(Box::new(big_inp_1and2())),
@@ -90,8 +90,8 @@ pub fn part1nd(data: &str) -> u32 {
     do_part1nd(parse_nd(data))
 }
 
-pub fn part1() -> u32 {
-    let data = parse(get_data()).0;
+pub fn part1(data: &str) -> u32 {
+    let data = parse(data).0;
     to_visible_treecount(data)
 }
 
@@ -399,8 +399,4 @@ fn parse(data: &str) -> Data {
         .map(|line| line.chars().map(<Tree>::from).collect())
         .collect::<Vec<Vec<Tree>>>()
         .into()
-}
-
-const fn get_data() -> &'static str {
-    include_str!("../inputs/day8-inp.txt")
 }

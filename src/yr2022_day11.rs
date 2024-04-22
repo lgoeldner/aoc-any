@@ -19,7 +19,6 @@ pub const SOLUTION: Solution = Solution {
 };
 
 const _TEST_EXAMPLE: &str = include_str!("../inputs/2022-day11-test.txt");
-// const DATA: &str = include_str!("../inputs/2022-day11-inp.txt");
 
 fn part1(data: &str) -> u64 {
     let parsed = parse(data);

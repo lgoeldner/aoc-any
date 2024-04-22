@@ -38,8 +38,6 @@ pub const SOLUTION: Solution = Solution {
     ],
 };
 
-// const DATA: &str = include_str!("../inputs/day10-inp.txt");
-
 const TEST_DATA: &str = include_str!("../inputs/day10-test.txt");
 
 fn do_part1(data: &str) -> anyhow::Result<i32> {

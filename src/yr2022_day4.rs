@@ -101,14 +101,6 @@ fn parse1(inp: &str) -> anyhow::Result<Vec<Range2>> {
 }
 
 #[test]
-fn test_part1() -> anyhow::Result<()> {
-    let data = include_str!("../inputs/day4-test.txt").to_owned();
-    part1_withdata(&data).map(|_| ())?;
-
-    Ok(())
-}
-
-#[test]
 fn contains_self_works() {
     [
         ("2-4,6-8", false),

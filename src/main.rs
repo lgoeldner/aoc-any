@@ -59,3 +59,4 @@ mod yr2022_day4;
 mod yr2022_day7;
 mod yr2022_day8;
 mod yr2022_day9;
+mod yr2022_day12;

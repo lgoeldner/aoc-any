@@ -356,7 +356,7 @@ pub fn time_bench_solution(
             .par_bridge()
             .map(|_| {
                 let time = Instant::now();
-                let _ = f(input);
+                core::hint::black_box(f(input));
                 time.elapsed()
             })
             .collect::<Vec<_>>()
@@ -364,7 +364,7 @@ pub fn time_bench_solution(
         (0..times)
             .map(|_| {
                 let time = Instant::now();
-                let _ = f(input);
+                core::hint::black_box(f(input));
                 time.elapsed()
             })
             .collect::<Vec<_>>()
