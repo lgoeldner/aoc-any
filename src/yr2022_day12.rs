@@ -1,11 +1,11 @@
-use std::collections::{hash_map::Entry, VecDeque};
+use std::collections::VecDeque;
 use std::convert::Into;
 use std::fmt::{Debug, Formatter};
 
-use gxhash::{GxHashMap, GxHashSet};
+use gxhash::GxHashSet;
 use ndarray::prelude::*;
 
-use aoc_any::{AocRuntime, BenchTimes, Info, Solution};
+use aoc_any::{BenchTimes, Info, Solution};
 
 pub const SOLUTION: Solution = Solution {
     info: Info {
@@ -19,7 +19,7 @@ pub const SOLUTION: Solution = Solution {
     other: &[],
 };
 
-const EXAMPLE: &str = "Sabqponm
+const _EXAMPLE: &str = "Sabqponm
 abcryxxl
 accszExk
 acctuvwj
@@ -50,11 +50,6 @@ impl std::cmp::Ord for DPoint {
     }
 }
 
-struct SPoint {
-    dist: u32,
-    previous: Option<(usize, usize)>,
-}
-
 fn part1(data: &str) -> u32 {
     let (data, start_point) = parse(data);
     let queue = VecDeque::from([BfsQ {
@@ -63,7 +58,7 @@ fn part1(data: &str) -> u32 {
     }]);
 
     let x = loop_bfs(&data, queue);
-    dbg!(x.unwrap().dist)
+    x.unwrap().dist
 }
 
 fn loop_bfs(data: &Array2<Point>, mut queue: VecDeque<BfsQ>) -> Option<BfsQ> {
@@ -71,10 +66,9 @@ fn loop_bfs(data: &Array2<Point>, mut queue: VecDeque<BfsQ>) -> Option<BfsQ> {
         .iter()
         .map(|it| it.pos)
         .collect::<GxHashSet<_>>();
-    'loo: loop {
+    'outer_loop: loop {
         let elem = queue.pop_front();
         match elem {
-            Some(end) if data[end.pos] == Point::End => break Some(end),
             Some(elem) => {
                 let adj = get_adjacent(data, elem.pos, elem.dist);
                 for node in adj {
@@ -93,7 +87,7 @@ fn loop_bfs(data: &Array2<Point>, mut queue: VecDeque<BfsQ>) -> Option<BfsQ> {
                     // }
 
 					if data[node.pos] == Point::End {
-						break 'loo Some(node);
+						break 'outer_loop Some(node);
 					}
 
                     
@@ -102,9 +96,6 @@ fn loop_bfs(data: &Array2<Point>, mut queue: VecDeque<BfsQ>) -> Option<BfsQ> {
                         visited.insert(node.pos);
                     }
                 }
-
-				#[cfg(debug_assertions)]
-                dbg!(&queue, &visited);
             }
             None => break None,
         }
@@ -128,7 +119,7 @@ fn _bfs(data: &Array2<Point>, queue: &mut VecDeque<BfsQ>) -> Option<BfsQ> {
 fn test_adj() {
 	// let mut x = AocRuntime::new().unwrap();
 	// let data = x.input_cache.get(&SOLUTION.info).unwrap();
-    let data = parse(EXAMPLE).0;
+    let data = parse(_EXAMPLE).0;
     dbg!(data.shape());
 
     assert_eq!(
@@ -152,18 +143,9 @@ fn get_adjacent(data: &Array2<Point>, (x, y): (usize, usize), dist: u32) -> Vec<
 
     let mut adj = vec![];
 
-    #[cfg(debug_assertions)]
-    {
-        eprintln!();
-        eprintln!("adjacent to ({x:?}, {y:?}) [{elem:?}]");
-    }
-
     let mut push_if = |pos| {
         if let Some(p) = data.get(pos) {
             if elem.in_step(*p) {
-				#[cfg(debug_assertions)]
-                eprintln!("@[({pos:?})] => {p:?}, dist: {}", dist + 1);
-
                 adj.push(BfsQ {
                     dist: dist + 1,
                     pos,
@@ -254,7 +236,6 @@ fn parse(data: &str) -> (Array2<Point>, (usize, usize)) {
         .for_each(|((idx, cell), iter)| {
             *cell = iter;
             if *cell == Point::Start {
-				dbg!(idx);
                 start = Some(idx);
             }
         });
