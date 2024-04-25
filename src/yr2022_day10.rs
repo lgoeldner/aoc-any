@@ -1,4 +1,5 @@
 use std::fmt::Formatter;
+use std::hint::black_box;
 use std::{convert::Into, str::FromStr};
 
 use ndarray::Array2;
@@ -15,7 +16,7 @@ pub const SOLUTION: Solution = Solution {
     part1: |data| do_part1(data).unwrap().into(),
     part2: Some(|data| {
         ProblemResult::Other({
-            let _ = do_part2(data);
+            let _ = black_box(do_part2(data));
             Box::new(())
         })
     }),

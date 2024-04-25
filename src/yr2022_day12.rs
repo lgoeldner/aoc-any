@@ -5,18 +5,33 @@ use std::fmt::{Debug, Formatter};
 use gxhash::GxHashSet;
 use ndarray::prelude::*;
 
-use aoc_any::{BenchTimes, Info, Solution};
+use aoc_any::{BenchTimes, Info, Run, Solution};
+use tinyvec::{array_vec, ArrayVec};
 
 pub const SOLUTION: Solution = Solution {
     info: Info {
         name: "Hill Climbing Algorithm",
         day: 12,
         year: 2022,
-        bench: BenchTimes::None,
+        bench: BenchTimes::Default,
     },
     part1: |data| part1(data).into(),
-    part2: None,
-    other: &[],
+    part2: Some(|data| part2(data).into()),
+    other: &[(
+        "recursive part2",
+        |data| {
+            let (data, start_point) = parse::<true>(data);
+            bfs2(
+                &data,
+                VecDeque::from([QueuedPoint {
+                    pos: start_point,
+                    dist: 0,
+                }]),
+            )
+            .into()
+        },
+        Run::No,
+    )],
 };
 
 const _EXAMPLE: &str = "Sabqponm
@@ -25,152 +40,10 @@ accszExk
 acctuvwj
 abdefghi";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct BfsQ {
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct QueuedPoint {
     pos: (usize, usize),
     dist: u32,
-}
-
-#[derive(PartialEq, Eq, Clone)]
-struct DPoint {
-    dist: u32,
-    previous: Option<(usize, usize)>,
-    pos: (usize, usize),
-}
-
-impl std::cmp::PartialOrd for DPoint {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl std::cmp::Ord for DPoint {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.dist.cmp(&other.dist).reverse()
-    }
-}
-
-fn part1(data: &str) -> u32 {
-    let (data, start_point) = parse(data);
-    let queue = VecDeque::from([BfsQ {
-        pos: start_point,
-        dist: 0,
-    }]);
-
-    let x = loop_bfs(&data, queue);
-    x.unwrap().dist
-}
-
-fn loop_bfs(data: &Array2<Point>, mut queue: VecDeque<BfsQ>) -> Option<BfsQ> {
-    let mut visited = queue
-        .iter()
-        .map(|it| it.pos)
-        .collect::<GxHashSet<_>>();
-    'outer_loop: loop {
-        let elem = queue.pop_front();
-        match elem {
-            Some(elem) => {
-                let adj = get_adjacent(data, elem.pos, elem.dist);
-                for node in adj {
-                    // match visited.entry(node.pos) {
-                    //     Entry::Occupied(mut entry) if entry.get() > &node.dist => {
-                    //         //if entry.get() > &node.dist {
-                    //         entry.insert(node.dist);
-                    //         queue.push_back(node);
-                    //         //}
-                    //     }
-                    //     Entry::Occupied(_) => {}
-                    //     Entry::Vacant(entry) => {
-                    //         entry.insert(node.dist);
-                    //         queue.push_back(node);
-                    //     }
-                    // }
-
-					if data[node.pos] == Point::End {
-						break 'outer_loop Some(node);
-					}
-
-                    
-                    if !visited.contains(&node.pos) {
-                        queue.push_back(node.clone());
-                        visited.insert(node.pos);
-                    }
-                }
-            }
-            None => break None,
-        }
-    }
-}
-
-fn _bfs(data: &Array2<Point>, queue: &mut VecDeque<BfsQ>) -> Option<BfsQ> {
-    match queue.pop_front() {
-        Some(end) if data[end.pos] == Point::End => Some(end),
-        Some(elem) => {
-            let adj = get_adjacent(data, elem.pos, elem.dist);
-            queue.extend(adj);
-            _bfs(dbg!(data), dbg!(queue))
-            // None
-        }
-        None => None,
-    }
-}
-
-#[test]
-fn test_adj() {
-	// let mut x = AocRuntime::new().unwrap();
-	// let data = x.input_cache.get(&SOLUTION.info).unwrap();
-    let data = parse(_EXAMPLE).0;
-    dbg!(data.shape());
-
-    assert_eq!(
-        get_adjacent(&data, (4, 4), 0),
-        vec![
-            BfsQ {
-                dist: 1,
-                pos: (3, 4),
-            },
-            BfsQ {
-                dist: 1,
-                pos: (5, 4),
-            }
-        ]
-    );
-}
-
-fn get_adjacent(data: &Array2<Point>, (x, y): (usize, usize), dist: u32) -> Vec<BfsQ> {
-    //  let view = data.slice(s![x - 1..x + 1, y - 1..y + 1]);
-    let elem = data[(x, y)];
-
-    let mut adj = vec![];
-
-    let mut push_if = |pos| {
-        if let Some(p) = data.get(pos) {
-            if elem.in_step(*p) {
-                adj.push(BfsQ {
-                    dist: dist + 1,
-                    pos,
-                });
-            }
-        }
-    };
-
-    if x > 0 {
-        push_if((x - 1, y));
-    }
-
-    if x + 1 < data.shape()[0] {
-        push_if((x + 1, y));
-    }
-
-    if y > 0 {
-        push_if((x, y - 1));
-    }
-
-    if y + 1 < data.shape()[1] {
-        push_if((x, y + 1));
-    }
-
-    adj
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -224,7 +97,153 @@ impl std::fmt::Debug for Point {
     }
 }
 
-fn parse(data: &str) -> (Array2<Point>, (usize, usize)) {
+fn part2(data: &str) -> u32 {
+    let (data, start_point) = parse::<true>(data);
+    let queue = VecDeque::from([QueuedPoint {
+        pos: start_point,
+        dist: 0,
+    }]);
+
+    loop_bfs_part2(&data, queue)
+}
+
+fn part1(data: &str) -> u32 {
+    let (data, start_point) = parse::<false>(data);
+    let queue = VecDeque::from([QueuedPoint {
+        pos: start_point,
+        dist: 0,
+    }]);
+
+    let x = loop_bfs(&data, queue);
+    x.unwrap().dist
+}
+
+fn loop_bfs(data: &Array2<Point>, mut queue: VecDeque<QueuedPoint>) -> Option<QueuedPoint> {
+    let mut visited = GxHashSet::from_iter([queue[0].pos]);
+
+    'outer_loop: loop {
+        let elem = queue.pop_front().unwrap();
+        let adj = get_adjacent(data, elem.pos, elem.dist, false);
+
+        for node in adj {
+            if data[node.pos] == Point::End {
+                break 'outer_loop Some(node);
+            }
+
+            if !visited.contains(&node.pos) {
+                queue.push_back(node.clone());
+                visited.insert(node.pos);
+            }
+        }
+    }
+}
+
+fn loop_bfs_part2(data: &Array2<Point>, mut queue: VecDeque<QueuedPoint>) -> u32 {
+    let mut visited = GxHashSet::from_iter([queue[0].pos]);
+
+    let mut min_dist = u32::MAX;
+
+    'outer: loop {
+        let elem = queue.pop_front().unwrap();
+
+        let adj = get_adjacent(data, elem.pos, elem.dist, true);
+        for node in adj {
+            if data[node.pos].get_height() == 0 {
+                min_dist = min_dist.min(node.dist);
+                break 'outer min_dist;
+            }
+
+            if !visited.contains(&node.pos) {
+                queue.push_back(node.clone());
+                visited.insert(node.pos);
+            }
+        }
+    }
+}
+
+fn bfs2(data: &Array2<Point>, queue: VecDeque<QueuedPoint>) -> u32 {
+    fn bfs_part2_rec(
+        data: &Array2<Point>,
+        mut queue: VecDeque<QueuedPoint>,
+        mut visited: GxHashSet<(usize, usize)>,
+        min_dist: u32,
+    ) -> u32 {
+        let elem = queue.pop_front();
+        match elem {
+            Some(elem) => {
+                let adj = get_adjacent(data, elem.pos, elem.dist, true);
+                for node in adj {
+                    if data[node.pos].get_height() == 0 {
+                        return min_dist.min(node.dist);
+                    }
+
+                    if !visited.contains(&node.pos) {
+                        queue.push_back(node.clone());
+                        visited.insert(node.pos);
+                    }
+                }
+
+                bfs_part2_rec(data, queue, visited, min_dist)
+            }
+            None => unreachable!(),
+        }
+    }
+
+    let visited = GxHashSet::from_iter([queue[0].pos]);
+
+    let min_dist = u32::MAX;
+
+    bfs_part2_rec(data, queue, visited, min_dist)
+}
+
+fn get_adjacent(
+    data: &Array2<Point>,
+    (x, y): (usize, usize),
+    dist: u32,
+    part_2: bool,
+) -> ArrayVec<[QueuedPoint; 4]> {
+    //  let view = data.slice(s![x - 1..x + 1, y - 1..y + 1]);
+    let elem = data[(x, y)];
+
+    let mut adj = array_vec![];
+
+    let mut push_if = |pos| {
+        if let Some(p) = data.get(pos) {
+            let test = if part_2 {
+                p.in_step(elem)
+            } else {
+                elem.in_step(*p)
+            };
+
+            if test {
+                adj.push(QueuedPoint {
+                    dist: dist + 1,
+                    pos,
+                });
+            }
+        }
+    };
+
+    if x > 0 {
+        push_if((x - 1, y));
+    }
+
+    if x + 1 < data.shape()[0] {
+        push_if((x + 1, y));
+    }
+
+    if y > 0 {
+        push_if((x, y - 1));
+    }
+
+    if y + 1 < data.shape()[1] {
+        push_if((x, y + 1));
+    }
+
+    adj
+}
+
+fn parse<const PART2: bool>(data: &str) -> (Array2<Point>, (usize, usize)) {
     let shape = (data.lines().count(), data.lines().next().unwrap().len());
 
     let mut arr = Array2::from_elem(shape, Point::Height(0));
@@ -235,18 +254,15 @@ fn parse(data: &str) -> (Array2<Point>, (usize, usize)) {
         .zip(data.lines().flat_map(|line| line.chars().map(Point::from)))
         .for_each(|((idx, cell), iter)| {
             *cell = iter;
-            if *cell == Point::Start {
+            if *cell == if PART2 { Point::End } else { Point::Start } {
                 start = Some(idx);
             }
         });
 
-	let start = {
-		let (x, y) = start.expect("Grid should have a start point");
-		(y, x)
-	};
+    let start = {
+        let (x, y) = start.expect("Grid should have a start point");
+        (y, x)
+    };
 
-    (
-        arr.permuted_axes([1, 0]),
-        start,
-    )
+    (arr.permuted_axes([1, 0]), start)
 }
