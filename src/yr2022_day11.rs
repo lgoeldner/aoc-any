@@ -11,7 +11,7 @@ pub const SOLUTION: Solution = Solution {
         name: "Monkey in the Middle",
         day: 11,
         year: 2022,
-        bench: aoc_any::BenchTimes::Default,
+        bench: aoc_any::BenchTimes::None,
     },
     part1: |data| part1(data).into(),
     part2: Some(|data| part2(data).into()),
