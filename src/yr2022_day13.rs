@@ -17,11 +17,10 @@ const _EXAMPLE: &str = include_str!("../inputs/day13-test.txt");
 
 fn part1(data: &str) -> usize {
     parse::part1(data)
-        .iter()
         .map(cmp_packet::true_orders)
         .enumerate()
-        .filter_map(|(idx, right_order)| right_order.then_some(idx + 1))
-        .sum::<usize>()
+        .filter_map(|(idx, is_right_order)| is_right_order.then_some(idx + 1))
+        .sum()
 }
 
 fn part2(data: &str) -> usize {
@@ -83,7 +82,7 @@ mod cmp_packet {
     /// internally uses a `cmp::Ordering`.
     /// If the Ordering is Greater, the packet is in the wrong order
     /// If the Ordering is Less, the packet is in the right order
-    pub fn true_orders([Packet(lhs), Packet(rhs)]: &[Packet; 2]) -> bool {
+    pub fn true_orders([Packet(lhs), Packet(rhs)]: [Packet; 2]) -> bool {
         match cmp_inner([&lhs, &rhs]) {
             cmp::Ordering::Greater => false,
             cmp::Ordering::Equal | cmp::Ordering::Less => true,
@@ -104,13 +103,12 @@ mod cmp_packet {
 
     #[test]
     fn cmp_packet_test() {
-        const INP: &str = indoc::indoc! {"\
-	[7,7,7,7]
-	[7,7,7]"
+        const INP: &str = indoc::indoc! {"
+			[7,7,7,7]
+			[7,7,7]"
         };
 
-        let packet = super::parse::part1(INP);
-        assert!(!true_orders(&packet[0]));
+        assert!(!true_orders(super::parse::part1(INP).next().unwrap()));
     }
 }
 
@@ -177,14 +175,13 @@ mod parse {
             .collect()
     }
 
-    pub fn part1(data: &str) -> Vec<[Packet; 2]> {
-        data.split("\n\n")
-            .map(|it| {
-                let (l, r) = it.split_once('\n').unwrap();
+    pub fn part1(data: &str) -> impl Iterator<Item = [Packet; 2]> + '_ {
+        data.split("\n\n").map(|it| {
+            let (l, r) = it.split_once('\n').unwrap();
 
-                [parse_line(l), parse_line(r)]
-            })
-            .collect()
+            [parse_line(l), parse_line(r)]
+        })
+        // .collect()
     }
 
     fn parse_line(line: &str) -> Packet {
