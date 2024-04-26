@@ -1,128 +1,122 @@
-use std::{num::ParseIntError, rc::Rc};
-
 use aoc_any::{BenchTimes, Info, Solution};
-use itertools::Itertools;
-
-use crate::yr2022_day13::parse::Value;
-
-use self::parse::Packet;
+use parse::{Packet, Value};
 
 pub const SOLUTION: Solution = Solution {
     info: Info {
         name: "Distress Signal",
         day: 13,
         year: 2022,
-        bench: BenchTimes::None,
+        bench: BenchTimes::Many(10),
     },
-    part1: |_data| part1(EXAMPLE).into(),
-    part2: None,
+    part1: |data| part1(data).into(),
+    part2: Some(|data| part2(data).into()),
     other: &[],
 };
 
-#[derive(PartialEq, Eq, Clone, Copy)]
-enum Token {
-    OpenList,
-    CloseList,
-    Num(u32),
-}
-
-impl std::fmt::Debug for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::OpenList => write!(f, "["),
-            Self::CloseList => write!(f, "]"),
-            Self::Num(n) => write!(f, "{n}"),
-        }
-    }
-}
-
-impl TryFrom<&str> for Token {
-    type Error = ParseIntError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Ok(match value {
-            "[" => Self::OpenList,
-            "]" => Self::CloseList,
-            n => Self::Num(n.parse()?),
-        })
-    }
-}
-
-const EXAMPLE: &str = include_str!("../inputs/day13-test.txt");
-
-macro_rules! boxed {
-    ($ex:expr) => {
-        Box::new($ex)
-    };
-}
+const _EXAMPLE: &str = include_str!("../inputs/day13-test.txt");
 
 fn part1(data: &str) -> usize {
-    let parsed = parse::parse(data);
-
-    dbg!(parsed
+    parse::part1(data)
         .iter()
-        .map(cmp_packet)
+        .map(cmp_packet::true_orders)
         .enumerate()
         .filter_map(|it| it.1.then_some(it.0 + 1))
-        .collect_vec());
-    todo!()
-    //.sum::<usize>()
+        .sum::<usize>()
 }
 
-fn cmp_packet([lhs, rhs]: &[Packet; 2]) -> bool {
-    fn inner_cmp((lhs, rhs): (&Value, &Value)) -> bool {
+fn part2(data: &str) -> usize {
+    thread_local! {
+        static MARKER_PACKETS: [Packet; 2] = [
+            Packet(Value::List(vec![Value::List(vec![Value::Num(2)].into())].into())),
+            Packet(Value::List(vec![Value::List(vec![Value::Num(6)].into())].into())),
+        ];
+    }
+
+    MARKER_PACKETS.with(|div_packets| {
+        let mut parsed = parse::part2(data);
+
+        parsed.extend_from_slice(div_packets);
+        parsed.sort();
+
+        let fst_packet = parsed.binary_search(&div_packets[0]).unwrap() + 1;
+        let snd_packet = parsed.binary_search(&div_packets[1]).unwrap() + 1;
+
+        fst_packet * snd_packet
+    })
+}
+
+mod cmp_packet {
+
+    use itertools::{EitherOrBoth, Itertools};
+
+    use super::parse::{Packet, Value};
+
+    use std::cmp;
+
+    fn cmp_inner([lhs, rhs]: [&Value; 2]) -> cmp::Ordering {
         match (lhs, rhs) {
-            (Value::Num(l), Value::Num(r)) => l <= r,
+            (Value::Num(l), Value::Num(r)) => l.cmp(r),
 
-            (lhs @ Value::List(_), num @ Value::Num(_)) => {
-                // let rhs_len = 1;
-                // if rhs_len < lhs.len() {
-                //     false
-                // } else if lhs.len() == 1 {
-                //     inner_cmp((&lhs[0], &num))
-                // } else {
-                //     true
-                // }
-                inner_cmp((lhs, &Value::List(Rc::new([num.clone()]))))
-            }
+            (Value::List(l), Value::List(r)) => cmp_lists_inner(l, r),
 
-            (num @ Value::Num(_), rhs @ Value::List(_)) => {
-                // let lhs_len = 1;
-                // if lhs_len < rhs.len() {
-                //     false
-                // }
-                // // else if rhs.len() == 1 {
-                // //     inner_cmp((&num, &rhs[0]))
-                // // }
-                // else {
-                //     true
-                // }
+            (Value::Num(_), Value::List(r)) => cmp_lists_inner(&[lhs.clone()], r),
 
-                inner_cmp((&Value::List(Rc::new([num.clone()])), &rhs))
-            }
-
-            (Value::List(lhs), Value::List(rhs)) => match lhs.len().cmp(&rhs.len()) {
-                std::cmp::Ordering::Equal => lhs.iter().zip(rhs.iter()).all(inner_cmp),
-                std::cmp::Ordering::Greater => false,
-                std::cmp::Ordering::Less => true,
-            },
+            (Value::List(l), Value::Num(_)) => cmp_lists_inner(l, &[rhs.clone()]),
         }
     }
 
-    inner_cmp((&lhs.0, &rhs.0))
+    fn cmp_lists_inner(l: &[Value], r: &[Value]) -> cmp::Ordering {
+        // short circuits when one list runs out or one number is not equal
+        for either in l.iter().zip_longest(r.iter()) {
+            match either {
+                EitherOrBoth::Both(l, r) => match cmp_inner([l, r]) {
+                    cmp::Ordering::Equal => continue,
+                    r#else => return r#else,
+                },
+                EitherOrBoth::Left(_) => return cmp::Ordering::Greater,
+                EitherOrBoth::Right(_) => return cmp::Ordering::Less,
+            }
+        }
 
-    //	lhs.0.iter().zip(rhs.0.iter()).all(inner_cmp)
-}
+        // else
+        cmp::Ordering::Equal
+    }
 
-#[test]
-fn cmp_packet_test() {
-    const INP: &str = indoc::indoc! {"\
+    // returns true if the packets are in the right order,
+    /// so, if the left one is smaller than the right one.
+    ///
+    /// internally uses a `cmp::Ordering`.
+    /// If the Ordering is Greater, the packet is in the wrong order
+    /// If the Ordering is Less, the packet is in the right order
+    pub fn true_orders([Packet(lhs), Packet(rhs)]: &[Packet; 2]) -> bool {
+        match cmp_inner([&lhs, &rhs]) {
+            cmp::Ordering::Greater => false,
+            cmp::Ordering::Equal | cmp::Ordering::Less => true,
+        }
+    }
+
+    impl std::cmp::PartialOrd for Packet {
+        fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    impl std::cmp::Ord for Packet {
+        fn cmp(&self, other: &Self) -> cmp::Ordering {
+            cmp_inner([&self.0, &other.0])
+        }
+    }
+
+    #[test]
+    fn cmp_packet_test() {
+        const INP: &str = indoc::indoc! {"\
 	[7,7,7,7]
 	[7,7,7]"
-    };
+        };
 
-    let packet = parse::parse(INP);
-    assert!(!cmp_packet(&packet[0]));
+        let packet = super::parse::part1(INP);
+        assert!(!true_orders(&packet[0]));
+    }
 }
 
 mod parse {
@@ -132,9 +126,36 @@ mod parse {
     use once_cell::sync::Lazy;
     use regex::Regex;
 
-    use super::Token;
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    enum Token {
+        OpenList,
+        CloseList,
+        Num(u32),
+    }
 
-    #[derive(Clone)]
+    impl std::fmt::Debug for Token {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::OpenList => write!(f, "["),
+                Self::CloseList => write!(f, "]"),
+                Self::Num(n) => write!(f, "{n}"),
+            }
+        }
+    }
+
+    impl TryFrom<&str> for Token {
+        type Error = std::num::ParseIntError;
+
+        fn try_from(value: &str) -> Result<Self, Self::Error> {
+            Ok(match value {
+                "[" => Self::OpenList,
+                "]" => Self::CloseList,
+                n => Self::Num(n.parse()?),
+            })
+        }
+    }
+
+    #[derive(Clone, PartialEq, Eq)]
     pub struct Packet(pub Value);
 
     impl Packet {
@@ -146,13 +167,25 @@ mod parse {
         }
     }
 
-    #[derive(Clone)]
+    #[derive(Clone, PartialEq, Eq)]
     pub enum Value {
         Num(u32),
         List(Rc<[Value]>),
     }
 
-    pub fn parse(data: &str) -> Vec<[Packet; 2]> {
+    const _: () = assert!(std::mem::size_of::<Rc<Value>>() == 8);
+
+    pub fn part2(data: &str) -> Vec<Packet> {
+        data.split("\n\n")
+            .flat_map(|it| {
+                let (l, r) = it.split_once('\n').unwrap();
+
+                [parse_line(l), parse_line(r)]
+            })
+            .collect()
+    }
+
+    pub fn part1(data: &str) -> Vec<[Packet; 2]> {
         data.split("\n\n")
             .map(|it| {
                 let (l, r) = it.split_once('\n').unwrap();
@@ -207,11 +240,11 @@ mod parse {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
                 Self::List(l) => {
-                    if f.alternate() {
-                        write!(f, "[")?;
-                    } else {
-                        write!(f, "List[")?;
-                    }
+                    // if f.alternate() {
+                    write!(f, "[")?;
+                    // } else {
+                    //     write!(f, "List[")?;
+                    // }
 
                     if let Some(first) = l.first() {
                         write!(f, "{first:?}")?;
@@ -231,7 +264,7 @@ mod parse {
             write!(
                 f,
                 "Packet({:#?})",
-                Value::List(Rc::clone(&self.get_list().unwrap()))
+                Value::List(Rc::clone(self.get_list().unwrap()))
             )
         }
     }

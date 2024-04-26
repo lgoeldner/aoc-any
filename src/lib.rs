@@ -67,7 +67,7 @@ pub mod types {
                     .into_iter()
                     .map(|(label, f, info)| {
                         let input = self.input_cache.get(info).unwrap();
-                        time_bench_solution(&input, info, label, f)
+                        time_bench_solution(&input, info, label, &f)
                     })
                     .collect::<Vec<_>>();
 
@@ -284,7 +284,7 @@ pub fn bench_solutions(days: &'static [Solution], runtime: &mut AocRuntime) -> V
             input,
             &day.info,
             "part1".to_owned(),
-            day.part1,
+            &day.part1,
         ));
 
         // part2
@@ -293,7 +293,7 @@ pub fn bench_solutions(days: &'static [Solution], runtime: &mut AocRuntime) -> V
                 input,
                 &day.info,
                 "part2".to_owned(),
-                part2,
+                &part2,
             ));
         }
 
@@ -324,7 +324,7 @@ pub fn time_bench_solution(
     input: &str,
     info: &Info,
     label: String,
-    f: impl Fn(&str) -> ProblemResult + Send + Sync,
+    f: &(dyn Fn(&str) -> ProblemResult + Send + Sync),
 ) -> BenchRun {
     let times = match info.bench {
         BenchTimes::None => 0,

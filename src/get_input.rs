@@ -51,35 +51,26 @@ impl InputCache {
     }
 
     pub fn get(&mut self, solution: &dyn DateProvider) -> Result<String, anyhow::Error> {
-        let selfcell = RefCell::new(self);
+        let self_ = RefCell::new(self);
 
-        if let Some(res) = selfcell.borrow().map.get(&solution.get_datetuple()) {
+        if let Some(res) = self_.borrow().map.get(&solution.get_datetuple()) {
             return Ok(res.clone());
         }
 
-        let value = selfcell.borrow().get_web_input(solution)?;
+        let value = self_.borrow().get_web_input(solution)?;
         //  let value = input;
 
-        selfcell
+        self_
             .borrow_mut()
             .map
-            .insert(solution.get_datetuple(), value);
+            .insert(solution.get_datetuple(), value.clone());
 
-        let res = selfcell
-            .borrow()
-            .map
-            .get(&solution.get_datetuple())
-            .ok_or_else(|| unreachable!())
-            .cloned();
+        debug_assert_ne!(
+            "Puzzle inputs differ by user.  Please log in to get your puzzle input.",
+            value
+        );
 
-        if let Ok(ref res) = res {
-            assert_ne!(
-                "Puzzle inputs differ by user.  Please log in to get your puzzle input.",
-                res
-            );
-        }
-
-        res
+        Ok(value)
     }
 
     fn retrieve_local_cache() -> Option<GxHashMap<(u16, u8), String>> {
