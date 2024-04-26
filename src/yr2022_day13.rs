@@ -6,7 +6,7 @@ pub const SOLUTION: Solution = Solution {
         name: "Distress Signal",
         day: 13,
         year: 2022,
-        bench: BenchTimes::Many(10),
+        bench: BenchTimes::Many(89),
     },
     part1: |data| part1(data).into(),
     part2: Some(|data| part2(data).into()),
@@ -20,7 +20,7 @@ fn part1(data: &str) -> usize {
         .iter()
         .map(cmp_packet::true_orders)
         .enumerate()
-        .filter_map(|it| it.1.then_some(it.0 + 1))
+        .filter_map(|(idx, right_order)| right_order.then_some(idx + 1))
         .sum::<usize>()
 }
 
@@ -46,11 +46,8 @@ fn part2(data: &str) -> usize {
 }
 
 mod cmp_packet {
-
-    use itertools::{EitherOrBoth, Itertools};
-
     use super::parse::{Packet, Value};
-
+    use itertools::{EitherOrBoth, Itertools};
     use std::cmp;
 
     fn cmp_inner([lhs, rhs]: [&Value; 2]) -> cmp::Ordering {
@@ -58,9 +55,7 @@ mod cmp_packet {
             (Value::Num(l), Value::Num(r)) => l.cmp(r),
 
             (Value::List(l), Value::List(r)) => cmp_lists_inner(l, r),
-
             (Value::Num(_), Value::List(r)) => cmp_lists_inner(&[lhs.clone()], r),
-
             (Value::List(l), Value::Num(_)) => cmp_lists_inner(l, &[rhs.clone()]),
         }
     }
@@ -82,7 +77,7 @@ mod cmp_packet {
         cmp::Ordering::Equal
     }
 
-    // returns true if the packets are in the right order,
+    /// returns true if the packets are in the right order,
     /// so, if the left one is smaller than the right one.
     ///
     /// internally uses a `cmp::Ordering`.
@@ -120,7 +115,6 @@ mod cmp_packet {
 }
 
 mod parse {
-    use std::rc::Rc;
     use std::{hint::unreachable_unchecked, iter::Peekable};
 
     use once_cell::sync::Lazy;
@@ -159,7 +153,7 @@ mod parse {
     pub struct Packet(pub Value);
 
     impl Packet {
-        const fn get_list(&self) -> Result<&Rc<[Value]>, ()> {
+        const fn get_list(&self) -> Result<&[Value], ()> {
             match self {
                 Self(Value::List(l)) => Ok(l),
                 _ => Err(()),
@@ -170,10 +164,8 @@ mod parse {
     #[derive(Clone, PartialEq, Eq)]
     pub enum Value {
         Num(u32),
-        List(Rc<[Value]>),
+        List(Box<[Value]>),
     }
-
-    const _: () = assert!(std::mem::size_of::<Rc<Value>>() == 8);
 
     pub fn part2(data: &str) -> Vec<Packet> {
         data.split("\n\n")
@@ -210,7 +202,7 @@ mod parse {
     fn parse_list(inp: &mut Peekable<impl Iterator<Item = Token>>) -> Value {
         // if the next or the one after are none, return an empty list
         if inp.next().is_none() || inp.peek().is_none() {
-            return Value::List(vec![].into_boxed_slice().into());
+            return Value::List(vec![].into_boxed_slice());
         }
 
         let mut s: Vec<Value> = vec![];
@@ -228,7 +220,7 @@ mod parse {
 
                 Some(Token::CloseList) => {
                     inp.next();
-                    return Value::List(s.into_boxed_slice().into());
+                    return Value::List(s.into_boxed_slice());
                 }
 
                 None => unsafe { unreachable_unchecked() },
@@ -240,11 +232,7 @@ mod parse {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
                 Self::List(l) => {
-                    // if f.alternate() {
                     write!(f, "[")?;
-                    // } else {
-                    //     write!(f, "List[")?;
-                    // }
 
                     if let Some(first) = l.first() {
                         write!(f, "{first:?}")?;
@@ -264,7 +252,7 @@ mod parse {
             write!(
                 f,
                 "Packet({:#?})",
-                Value::List(Rc::clone(self.get_list().unwrap()))
+                Value::List(self.get_list().unwrap().into())
             )
         }
     }

@@ -229,14 +229,14 @@ pub mod types {
     macro_rules! impl_from_problem_num {
     ( $($t:ty),* ) => {
         $(
-        impl From<$t> for ProblemResult {
-            fn from(value: $t) -> Self {
-                ProblemResult::Number(value.try_into().unwrap())
-            }
-        }
-        )*
-    };
-}
+			impl From<$t> for ProblemResult {
+				fn from(value: $t) -> Self {
+					ProblemResult::Number(value.try_into().unwrap())
+				}
+			}
+			)*
+    	};
+	}
 
     impl_from_problem_num! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
 }
@@ -351,16 +351,18 @@ pub fn time_bench_solution(
 
     let start = Instant::now();
 
-    let runs = if times > 90 {
-        (0..times)
-            .par_bridge()
-            .map(|_| {
-                let time = Instant::now();
-                core::hint::black_box(f(input));
-                time.elapsed()
-            })
-            .collect::<Vec<_>>()
-    } else {
+    let runs = 
+	// if times > 90 {
+    //     (0..times)
+    //         .par_bridge()
+    //         .map(|_| {
+    //             let time = Instant::now();
+    //             core::hint::black_box(f(input));
+    //             time.elapsed()
+    //         })
+    //         .collect::<Vec<_>>()
+    // } else 
+	{
         (0..times)
             .map(|_| {
                 let time = Instant::now();

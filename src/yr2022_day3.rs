@@ -14,11 +14,30 @@ pub const SOLUTION: Solution = Solution {
     part2: Some(|data| part2(data).into()),
 };
 
+const GROUP_SIZE: usize = 3;
+
+#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone)]
+struct Group<'a>([&'a str; GROUP_SIZE]);
+
+#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone)]
+struct Data1<'a> {
+    left: &'a str,
+    right: &'a str,
+}
+
 pub fn part1(data: &str) -> u32 {
     parse_1(data)
         .map(|data: Data1<'_>| l_r_diff(&data))
         .map(char_to_prio)
         .sum()
+}
+
+fn parse_2(data: &str) -> Vec<Group> {
+    data.lines()
+        .chunks(GROUP_SIZE)
+        .into_iter()
+        .map(|group| Group(group.collect::<Vec<_>>().try_into().unwrap()))
+        .collect()
 }
 
 fn char_to_prio(c: char) -> u32 {
@@ -31,30 +50,11 @@ fn l_r_diff(data: &Data1) -> char {
     *set1.intersection(&set2).next().unwrap()
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone)]
-struct Data1<'a> {
-    left: &'a str,
-    right: &'a str,
-}
-
 fn parse_1(data: &str) -> impl Iterator<Item = Data1> {
     data.lines().map(|line| {
         let (left, right) = line.split_at(line.len() / 2);
         Data1 { left, right }
     })
-}
-
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Clone)]
-struct Group<'a>([&'a str; 3]);
-
-fn parse_2(data: &str) -> Vec<Group> {
-    const GROUP_SIZE: usize = 3;
-
-    data.lines()
-        .chunks(GROUP_SIZE)
-        .into_iter()
-        .map(|group| Group(group.collect::<Vec<_>>().try_into().unwrap()))
-        .collect()
 }
 
 pub fn part2(data: &str) -> u32 {
