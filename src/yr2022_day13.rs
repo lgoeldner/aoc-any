@@ -1,12 +1,11 @@
-use std::{iter, num::ParseIntError, rc::Rc};
+use std::{num::ParseIntError, rc::Rc};
 
 use aoc_any::{BenchTimes, Info, Solution};
 use itertools::Itertools;
 
 use crate::yr2022_day13::parse::Value;
 
-use self::parse::{parse, Packet};
-use indoc::indoc;
+use self::parse::Packet;
 
 pub const SOLUTION: Solution = Solution {
     info: Info {
@@ -15,7 +14,7 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: BenchTimes::None,
     },
-    part1: |data| part1(EXAMPLE).into(),
+    part1: |_data| part1(EXAMPLE).into(),
     part2: None,
     other: &[],
 };
@@ -60,14 +59,14 @@ macro_rules! boxed {
 fn part1(data: &str) -> usize {
     let parsed = parse::parse(data);
 
-   dbg!( parsed
+    dbg!(parsed
         .iter()
         .map(cmp_packet)
         .enumerate()
         .filter_map(|it| it.1.then_some(it.0 + 1))
         .collect_vec());
-	todo!()
-        //.sum::<usize>()
+    todo!()
+    //.sum::<usize>()
 }
 
 fn cmp_packet([lhs, rhs]: &[Packet; 2]) -> bool {
@@ -117,12 +116,12 @@ fn cmp_packet([lhs, rhs]: &[Packet; 2]) -> bool {
 
 #[test]
 fn cmp_packet_test() {
-    const INP: &str = indoc! {"\
+    const INP: &str = indoc::indoc! {"\
 	[7,7,7,7]
 	[7,7,7]"
     };
 
-    let packet = parse(INP);
+    let packet = parse::parse(INP);
     assert!(!cmp_packet(&packet[0]));
 }
 
@@ -139,9 +138,9 @@ mod parse {
     pub struct Packet(pub Value);
 
     impl Packet {
-        fn get_list(&self) -> Result<&Rc<[Value]>, ()> {
+        const fn get_list(&self) -> Result<&Rc<[Value]>, ()> {
             match self {
-                Packet(Value::List(l)) => Ok(l),
+                Self(Value::List(l)) => Ok(l),
                 _ => Err(()),
             }
         }
