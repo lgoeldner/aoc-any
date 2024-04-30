@@ -17,18 +17,15 @@ const _EXAMPLE: &str = include_str!("../inputs/day13-test.txt");
 
 fn part1(data: &str) -> usize {
     parse::part1(data)
-        .map(cmp_packet::true_orders)
         .enumerate()
-        .filter_map(|(idx, is_right_order)| is_right_order.then_some(idx + 1))
+        .filter(|(_, [l, r])| l < r)
+        .map(|(i, _)| i + 1)
         .sum()
 }
 
 fn part2(data: &str) -> usize {
     thread_local! {
-        static MARKER_PACKETS: [Packet; 2] = [
-            Packet(Value::List(vec![Value::List(vec![Value::Num(2)].into())].into())),
-            Packet(Value::List(vec![Value::List(vec![Value::Num(6)].into())].into())),
-        ];
+        static MARKER_PACKETS: [Packet; 2] = parse::part1("[[2]]\n[[6]]").next().unwrap();
     }
 
     MARKER_PACKETS.with(|div_packets| {
@@ -54,7 +51,7 @@ mod cmp_packet {
             (Value::Num(l), Value::Num(r)) => l.cmp(r),
 
             (Value::List(l), Value::List(r)) => cmp_lists_inner(l, r),
-            (Value::Num(_), Value::List(r)) => cmp_lists_inner(&[lhs.clone()], r),
+            (Value::Num(_), Value::List(r)) => cmp_lists_inner(&[lhs.clone()], r), // clone is fine because its only a u32
             (Value::List(l), Value::Num(_)) => cmp_lists_inner(l, &[rhs.clone()]),
         }
     }
@@ -82,11 +79,8 @@ mod cmp_packet {
     /// internally uses a `cmp::Ordering`.
     /// If the Ordering is Greater, the packet is in the wrong order
     /// If the Ordering is Less, the packet is in the right order
-    pub fn true_orders([Packet(lhs), Packet(rhs)]: [Packet; 2]) -> bool {
-        match cmp_inner([&lhs, &rhs]) {
-            cmp::Ordering::Greater => false,
-            cmp::Ordering::Equal | cmp::Ordering::Less => true,
-        }
+    pub fn true_orders([lhs, rhs]: [Packet; 2]) -> bool {
+        lhs <= rhs
     }
 
     impl std::cmp::PartialOrd for Packet {
@@ -181,7 +175,6 @@ mod parse {
 
             [parse_line(l), parse_line(r)]
         })
-        // .collect()
     }
 
     fn parse_line(line: &str) -> Packet {
@@ -202,7 +195,7 @@ mod parse {
             return Value::List(vec![].into_boxed_slice());
         }
 
-        let mut s: Vec<Value> = vec![];
+        let mut s = vec![];
 
         loop {
             let elem = inp.peek().copied();
