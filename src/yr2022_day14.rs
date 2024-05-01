@@ -1,10 +1,7 @@
-
 use aoc_any::{BenchTimes, Info, Solution};
 use gxhash::GxHashMap;
 
-use self::parse::Point;
-
-
+use parse::{Point, Tile};
 
 pub const SOLUTION: Solution = Solution {
     info: Info {
@@ -13,7 +10,7 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: BenchTimes::None,
     },
-    part1: |_data| part1(EXAMPLE).into(),
+    part1: |_data| part1(_data).into(),
     part2: None,
     other: &[],
 };
@@ -23,40 +20,84 @@ const EXAMPLE: &str = include_str!("../inputs/2022-day14-test.txt");
 fn part1(data: &str) -> u32 {
     let (map, deepest) = parse::part1(data);
 
-    todo!()
+    FallingSand { map, deepest }.count() as u32
 }
 
-fn add_sand(map: &mut GxHashMap<Point, u32>, deepest: u32) -> bool {
-	
-	let mut sand = Point {
-		x: 500,
-		y: 0
-	};
+struct FallingSand {
+    map: parse::Map,
+    deepest: u32,
+}
 
-	loop {
-		// try down
+impl Iterator for FallingSand {
+    type Item = ();
 
-		// then try down-left
+    fn next(&mut self) -> Option<Self::Item> {
+        self.add_sand().ok()
+    }
+}
 
-		// then try down-right
+impl FallingSand {
+    fn add_sand(&mut self) -> Result<(), ()> {
+        let mut sand = Point { x: 500, y: 0 };
 
-		// else rest
+        loop {
+            // if in the abyss, return Err(())
 
+            if sand.y > self.deepest {
+                return Err(());
+            }
 
-	}
+            // try down
 
+            if let None = self.map.get(&Point {
+                y: sand.y + 1,
+                x: sand.x,
+            }) {
+                sand.y += 1;
+                continue;
+            }
 
-	todo!()
+            // then try down-left
+
+            if let None = self.map.get(&Point {
+                y: sand.y + 1,
+                x: sand.x - 1,
+            }) {
+                sand.y += 1;
+                sand.x -= 1;
+                continue;
+            }
+
+            // then try down-right
+
+            if let None = self.map.get(&Point {
+                y: sand.y + 1,
+                x: sand.x + 1,
+            }) {
+                sand.y += 1;
+                sand.x += 1;
+                continue;
+            }
+
+            // else rest
+
+            self.map.insert(sand, Tile::Sand);
+            break;
+        }
+
+        Ok(())
+    }
 }
 
 mod parse {
 
-    use std::{hash::Hash, str::FromStr};
+    use std::{collections::BTreeMap, hash::Hash, str::FromStr};
 
     use anyhow::Context;
 
     use gxhash::GxHashMap;
     use itertools::Itertools;
+    use tinyvec::{tiny_vec, TinyVec};
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
     pub struct Point {
@@ -134,8 +175,10 @@ mod parse {
         }
     }
 
+    pub type Map = GxHashMap<Point, Tile>;
+
     /// returns `(Map(Point => Tile), max_y key of Map)`
-    pub(super) fn part1(data: &str) -> (GxHashMap<Point, Tile>, u32) {
+    pub(super) fn part1(data: &str) -> (Map, u32) {
         let paths = data.lines().map(|line| {
             line.split(" -> ")
                 .map(str::parse::<Point>)
@@ -144,11 +187,27 @@ mod parse {
 
         let mut map = GxHashMap::default();
 
+        let mut horizontal_map: GxHashMap<u32, TinyVec<[[u32; 2]; 4]>> = GxHashMap::default();
+
         for connected_path in paths {
             for (from, to) in connected_path.tuple_windows() {
                 map.extend(from.path_to(to).map(|it| (it, Tile::Rock)));
+
+                if from.y == to.y {
+
+                    let y = [from.x.min(to.x), from.x.max(to.x)];
+
+                    horizontal_map
+                        .entry(from.y)
+                        .and_modify(|it| it.push(y))
+                        .or_insert(tiny_vec!([[u32; 2]; 4] => y));
+                    
+                    // assert!(horizontal_map.insert(from.y, (from.x, to.x)).is_none());
+                }
             }
         }
+
+        dbg!(horizontal_map);
 
         let max_y = map.keys().map(|Point { x: _, y }| *y).max().unwrap();
 

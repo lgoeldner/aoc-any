@@ -1,2 +1,8 @@
-[build]
-rustflags = ["-C", "target-feature=+aes"]
+[env]
+RUST_BACKTRACE = "1"
+RUSTFLAGS="-C target-cpu=native"
+
+[alias]
+r = "run"
+c = "check"
+
