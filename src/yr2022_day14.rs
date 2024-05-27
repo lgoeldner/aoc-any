@@ -1,6 +1,9 @@
+use std::iter;
+
 use aoc_any::{BenchTimes, Info, Solution};
 use gxhash::GxHashMap;
 
+use itertools::Itertools;
 use parse::{Point, Tile};
 
 pub const SOLUTION: Solution = Solution {
@@ -11,7 +14,7 @@ pub const SOLUTION: Solution = Solution {
         bench: BenchTimes::None,
     },
     part1: |_data| part1(_data).into(),
-    part2: Some(|data| part2(data).into()),
+    part2: Some(|_data| part2(_data).into()),
     other: &[],
 };
 
@@ -25,13 +28,34 @@ fn part1(data: &str) -> u32 {
 
 fn part2(data: &str) -> u32 {
     let (map, deepest) = parse::part1(data);
+    // let deepest = deepest - 1;
 
     let mut falling_sand = FallingSand { map, deepest };
 
+    let mut i = 0;
+
     while !falling_sand.origin_blocked() {
         let _ = falling_sand.add_sand(true);
+        i += 1;
     }
-    todo!()
+
+    i
+}
+
+fn print_map(map: &parse::Map) {
+    let Point { x: max_x, y: max_y } = dbg!(map.keys().max().unwrap());
+    let Point { x: min_x, y: _ } = dbg!(map.keys().min().unwrap());
+
+    for y in 0..=*max_y {
+        for x in *min_x..=*max_x {
+            if let Some(tile) = map.get(&Point { x, y }) {
+                print!("{tile:?}");
+            } else {
+                print!(".");
+            }
+        }
+        println!();
+    }
 }
 
 struct FallingSand {
@@ -58,7 +82,7 @@ impl FallingSand {
         loop {
             if part2 {
                 if sand.y > self.deepest + 1 {
-                    // dbg!("bottom reached");
+                    self.map.insert(sand, Tile::Sand);
 
                     return Err(());
                 }
@@ -118,10 +142,22 @@ mod parse {
     use itertools::Itertools;
     use tinyvec::{tiny_vec, TinyVec};
 
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct Point {
         pub x: u32,
         pub y: u32,
+    }
+
+    impl Ord for Point {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            self.x.cmp(&other.x).then_with(|| self.y.cmp(&other.y))
+        }
+    }
+
+    impl PartialOrd for Point {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
     }
 
     impl Hash for Point {
@@ -227,6 +263,6 @@ mod parse {
 
         let max_y = map.keys().map(|Point { x: _, y }| *y).max().unwrap();
 
-        (map, max_y)
+        (map, max_y - 1)
     }
 }
