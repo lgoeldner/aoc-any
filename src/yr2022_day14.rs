@@ -11,7 +11,7 @@ pub const SOLUTION: Solution = Solution {
         bench: BenchTimes::None,
     },
     part1: |_data| part1(_data).into(),
-    part2: None,
+    part2: Some(|data| part2(data).into()),
     other: &[],
 };
 
@@ -23,6 +23,17 @@ fn part1(data: &str) -> u32 {
     FallingSand { map, deepest }.count() as u32
 }
 
+fn part2(data: &str) -> u32 {
+    let (map, deepest) = parse::part1(data);
+
+    let mut falling_sand = FallingSand { map, deepest };
+
+    while !falling_sand.origin_blocked() {
+        let _ = falling_sand.add_sand(true);
+    }
+    todo!()
+}
+
 struct FallingSand {
     map: parse::Map,
     deepest: u32,
@@ -32,24 +43,32 @@ impl Iterator for FallingSand {
     type Item = ();
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.add_sand().ok()
+        self.add_sand(false).ok()
     }
 }
 
 impl FallingSand {
-    fn add_sand(&mut self) -> Result<(), ()> {
+    fn origin_blocked(&self) -> bool {
+        self.map.contains_key(&Point { x: 500, y: 0 })
+    }
+
+    fn add_sand(&mut self, part2: bool) -> Result<(), ()> {
         let mut sand = Point { x: 500, y: 0 };
 
         loop {
-            // if in the abyss, return Err(())
+            if part2 {
+                if sand.y > self.deepest + 1 {
+                    // dbg!("bottom reached");
 
-            if sand.y > self.deepest {
+                    return Err(());
+                }
+            } else if sand.y > self.deepest {
                 return Err(());
             }
 
             // try down
 
-            if let None = self.map.get(&Point {
+            if !self.map.contains_key(&Point {
                 y: sand.y + 1,
                 x: sand.x,
             }) {
@@ -59,7 +78,7 @@ impl FallingSand {
 
             // then try down-left
 
-            if let None = self.map.get(&Point {
+            if !self.map.contains_key(&Point {
                 y: sand.y + 1,
                 x: sand.x - 1,
             }) {
@@ -70,7 +89,7 @@ impl FallingSand {
 
             // then try down-right
 
-            if let None = self.map.get(&Point {
+            if !self.map.contains_key(&Point {
                 y: sand.y + 1,
                 x: sand.x + 1,
             }) {
@@ -182,7 +201,7 @@ mod parse {
         let paths = data.lines().map(|line| {
             line.split(" -> ")
                 .map(str::parse::<Point>)
-                .map(std::result::Result::unwrap)
+                .map(Result::unwrap)
         });
 
         let mut map = GxHashMap::default();
@@ -194,20 +213,17 @@ mod parse {
                 map.extend(from.path_to(to).map(|it| (it, Tile::Rock)));
 
                 if from.y == to.y {
-
                     let y = [from.x.min(to.x), from.x.max(to.x)];
 
                     horizontal_map
                         .entry(from.y)
                         .and_modify(|it| it.push(y))
                         .or_insert(tiny_vec!([[u32; 2]; 4] => y));
-                    
-                    // assert!(horizontal_map.insert(from.y, (from.x, to.x)).is_none());
                 }
             }
         }
 
-        dbg!(horizontal_map);
+        // dbg!(horizontal_map);
 
         let max_y = map.keys().map(|Point { x: _, y }| *y).max().unwrap();
 
