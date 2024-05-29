@@ -102,7 +102,8 @@ struct Line {
 }
 
 fn part1(data: Parsed) -> u32 {
-    let ranges = data.iter().filter_map(Line::width_at::<10>);
+    let ranges = data.iter().filter_map(Line::width_at::<10>).collect::<Vec<_>>();
+    dbg!(&ranges);
 
     todo!()
 }
