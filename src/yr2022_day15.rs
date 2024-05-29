@@ -9,10 +9,13 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: BenchTimes::None,
     },
-    part1: |_data| part1(parse(EXAMPLE).unwrap()).into(),
+    part1: |data| part1(parse(if TEST { EXAMPLE } else { data }).unwrap()).into(),
     part2: None,
     other: &[],
 };
+
+const TEST: bool = true;
+const HEIGHT: i64 = if TEST { 10 } else { 2_000_000 };
 
 mod math {
 
@@ -53,14 +56,24 @@ mod math {
     }
 
     impl super::Line {
-        pub fn width_at<const HEIGHT: i64>(&self) -> Option<Range> {
+        pub const fn new(sensor: super::Point, closest_beacon: super::Point) -> Self {
+            Self {
+                sensor,
+                closest_beacon,
+            }
+        }
+
+        pub fn width_at_height(&self) -> Option<Range> {
             let radius = self.sensor.manhattan_distance(&self.closest_beacon);
-            let height_diff = (HEIGHT - self.sensor.y).abs();
+            let height_diff = (super::HEIGHT - self.sensor.y).abs();
 
             (height_diff <= radius).then(|| {
                 let half_width = radius - height_diff;
 
-                (self.sensor.x - half_width..self.sensor.x + half_width).into()
+                Range {
+                    from: self.sensor.x - half_width,
+                    to: self.sensor.x + half_width,
+                }
             })
         }
     }
@@ -74,7 +87,7 @@ mod math {
                 sensor: Point { x: 8, y: 7 },
                 closest_beacon: Point { x: 2, y: 10 },
             }
-            .width_at::<10>(),
+            .width_at_height(),
             Some((2..14).into())
         );
     }
@@ -97,7 +110,7 @@ const EXAMPLE: &str =
     Sensor at x=14, y=3: closest beacon is at x=15, y=3\n\
     Sensor at x=20, y=1: closest beacon is at x=15, y=3";
 
-type Parsed = Vec<Line>;
+type Parsed = (Vec<Line>, u32);
 
 #[derive(Debug)]
 struct Point {
@@ -118,28 +131,39 @@ fn test_part1() {
         .map(core::convert::Into::into)
         .collect::<Vec<math::Range>>();
 
-    assert_eq!(flatten_spanned_len(dbg!(data[..data.len()-3].to_vec())), 5);
+    assert_eq!(
+        flatten_spanned_len(dbg!(data[..data.len() - 3].to_vec())),
+        5
+    );
     assert_eq!(flatten_spanned_len(data), 9);
 }
 
-fn part1(data: Parsed) -> u32 {
-    fn cmp<T: std::cmp::Ord>(a: T, b: &T) -> std::cmp::Ordering {
+fn part1((data, sub): Parsed) -> i64 {
+    fn cmp<T: std::cmp::Ord>(a: &T, b: &T) -> std::cmp::Ordering {
         a.cmp(b)
     }
 
     let mut ranges = data
         .iter()
-        .filter_map(Line::width_at::<10>)
+        .filter_map(Line::width_at_height)
         .collect::<Vec<_>>();
 
-    ranges.sort_by(|a, b| cmp(a.from, &b.from).then(cmp(a.to, &b.to)));
+    ranges.sort_by(|a, b| cmp(&a.from, &b.from).then(cmp(&a.to, &b.to)));
 
     dbg!(&ranges);
 
-    flatten_spanned_len(ranges)
+    flatten_spanned_len(ranges) - (sub as i64)
 }
 
-fn flatten_spanned_len(ranges: Vec<Range>) -> u32 {
+fn flatten_spanned_len(ranges: Vec<Range>) -> i64 {
+    fn min<T: Ord>(a: T, b: T) -> T {
+        a.min(b)
+    }
+
+    fn max<T: Ord>(a: T, b: T) -> T {
+        a.max(b)
+    }
+
     let mut iter = ranges.into_iter();
     let mut sum = 0;
     loop {
@@ -148,26 +172,27 @@ fn flatten_spanned_len(ranges: Vec<Range>) -> u32 {
             Some(state) => state,
         };
 
-        while let Some(el) = iter.next() {
+        for el in iter.by_ref() {
             if !state.intersects(&el) {
                 sum += state.spanned();
                 continue;
             }
 
             state = Range {
-                from: el.from.min(state.from),
-                to: el.to.max(state.to),
+                from: min(el.from, state.from),
+                to: max(state.to, el.to),
             };
         }
 
-        sum += state.spanned();
+        sum += dbg!(state.spanned());
     }
 
-    sum as u32
+    sum
 }
 
 fn parse(data: &str) -> anyhow::Result<Parsed> {
-    data.lines()
+    let res: Vec<_> = data
+        .lines()
         .map(|it| {
             sscanf::sscanf!(
                 it,
@@ -185,5 +210,9 @@ fn parse(data: &str) -> anyhow::Result<Parsed> {
             })
         })
         .collect::<Result<_, _>>()
-        .map_err(|it| anyhow!("failed to parse {it}"))
+        .map_err(|it| anyhow!("failed to parse {it}"))?;
+
+    let x = res.iter().filter(|it| it.closest_beacon.y == HEIGHT).count();
+
+    Ok((res, x.try_into()?))
 }
