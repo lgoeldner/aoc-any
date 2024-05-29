@@ -15,7 +15,7 @@ const DAYS: &[Solution] = &[
     yr2022_day11::SOLUTION,
     yr2022_day12::SOLUTION,
     yr2022_day13::SOLUTION,
-	yr2022_day14::SOLUTION,
+    yr2022_day14::SOLUTION,
     yr2022_day15::SOLUTION,
 ];
 

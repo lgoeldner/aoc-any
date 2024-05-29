@@ -26,11 +26,14 @@ pub mod types {
     use cli_table::{format::Justify, Color, Table, WithTitle};
     use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 
-	use anyhow::anyhow;
+    use anyhow::anyhow;
+    use rayon::iter::IntoParallelRefIterator;
 
     use crate::{get_input::InputCache, time_bench_solution};
 
     pub type SolutionFn = fn(&str) -> ProblemResult;
+
+    use rayon::prelude::*;
 
     pub struct AocRuntime {
         pub input_cache: InputCache,
@@ -53,7 +56,7 @@ pub mod types {
                 let matcher = SkimMatcherV2::default();
 
                 let matched_benches = days
-                    .iter()
+                    .par_iter()
                     .flat_map(get_names)
                     // if the name is matched, return only the name
                     .filter_map(|name| matcher.fuzzy_match(&name.0, &usr_query).map(|_| name))
@@ -65,10 +68,9 @@ pub mod types {
 
                 let result = matched_benches
                     .into_iter()
-                    .map(|(label, f, info)| {
-                        let input = self.input_cache.get(info).unwrap();
-                        time_bench_solution(&input, info, label, &f)
-                    })
+                    .map(|it| (self.input_cache.get(it.2).unwrap(), it))
+                    .par_bridge()
+                    .map(|(inp, (label, f, info))| time_bench_solution(&inp, info, label, &f))
                     .collect::<Vec<_>>();
 
                 return cli_table::print_stdout(result.with_title())
@@ -83,9 +85,7 @@ pub mod types {
     /// formats the names for each function available for the Solution, returns a Vec of (name, fn)
     // avoids type golfing
     #[allow(clippy::trivially_copy_pass_by_ref)]
-    fn get_names(
-        inp: &'static Solution,
-    ) -> Vec<(String, crate::SolutionFn, &'static crate::Info)> {
+    fn get_names(inp: &'static Solution) -> Vec<(String, crate::SolutionFn, &'static crate::Info)> {
         let x = inp.part2.map_or_else(
             || vec![("part1", inp.part1)],
             |part2| vec![("part2", part2), ("part1", inp.part1)],
@@ -351,26 +351,13 @@ pub fn time_bench_solution(
 
     let start = Instant::now();
 
-    let runs = 
-	// if times > 90 {
-    //     (0..times)
-    //         .par_bridge()
-    //         .map(|_| {
-    //             let time = Instant::now();
-    //             core::hint::black_box(f(input));
-    //             time.elapsed()
-    //         })
-    //         .collect::<Vec<_>>()
-    // } else 
-	{
-        (0..times)
-            .map(|_| {
-                let time = Instant::now();
-                core::hint::black_box(f(input));
-                time.elapsed()
-            })
-            .collect::<Vec<_>>()
-    };
+    let runs = (0..times)
+        .map(|_| {
+            let time = Instant::now();
+            core::hint::black_box(f(input));
+            time.elapsed()
+        })
+        .collect::<Vec<_>>();
 
     let alt_start = Instant::now();
     let output = f(input);

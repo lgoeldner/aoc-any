@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use aoc_any::{BenchTimes, Info, Solution};
+use math::Range;
 
 pub const SOLUTION: Solution = Solution {
     info: Info {
@@ -8,22 +9,32 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: BenchTimes::None,
     },
-    part1: |_data| {
-        part1(parse(EXAMPLE)).into()
-    },
+    part1: |_data| part1(parse(EXAMPLE).unwrap()).into(),
     part2: None,
     other: &[],
 };
 
 mod math {
-    use crate::yr2022_day15::Point;
 
-    use super::Line;
-
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, PartialEq, Eq, Clone)]
     pub struct Range {
-        from: i64,
-        to: i64,
+        pub from: i64,
+        pub to: i64,
+    }
+
+    impl Range {
+        pub const fn intersects(&self, other: &Self) -> bool {
+            // if sorted in non-descending order
+            if self.from >= other.from {
+                self.to >= other.from
+            } else {
+                other.to >= self.from
+            }
+        }
+
+        pub const fn spanned(&self) -> i64 {
+            (self.to - self.from).abs() + 1
+        }
     }
 
     impl From<core::ops::Range<i64>> for Range {
@@ -48,16 +59,16 @@ mod math {
 
             (height_diff <= radius).then(|| {
                 let half_width = radius - height_diff;
-                Range {
-                    from: self.sensor.x - half_width,
-                    to: self.sensor.x + half_width,
-                }
+
+                (self.sensor.x - half_width..self.sensor.x + half_width).into()
             })
         }
     }
 
     #[test]
     pub fn test_width_at_height() {
+        use super::{Line, Point};
+
         assert_eq!(
             Line {
                 sensor: Point { x: 8, y: 7 },
@@ -70,7 +81,7 @@ mod math {
 }
 
 #[rustfmt::skip]
-const EXAMPLE: &str = 
+const EXAMPLE: &str =
    "Sensor at x=2, y=18: closest beacon is at x=-2, y=15\n\
     Sensor at x=9, y=16: closest beacon is at x=10, y=16\n\
     Sensor at x=13, y=2: closest beacon is at x=15, y=3\n\
@@ -100,11 +111,59 @@ struct Line {
     pub closest_beacon: Point,
 }
 
+#[test]
+fn test_part1() {
+    let data = [1..3, 2..4, 2..5, 4..5, 5..5, 7..8, 9..10]
+        .into_iter()
+        .map(core::convert::Into::into)
+        .collect::<Vec<math::Range>>();
+
+    assert_eq!(flatten_spanned_len(dbg!(data[..data.len()-3].to_vec())), 5);
+    assert_eq!(flatten_spanned_len(data), 9);
+}
+
 fn part1(data: Parsed) -> u32 {
-    let ranges = data.iter().filter_map(Line::width_at::<10>).collect::<Vec<_>>();
+    fn cmp<T: std::cmp::Ord>(a: T, b: &T) -> std::cmp::Ordering {
+        a.cmp(b)
+    }
+
+    let mut ranges = data
+        .iter()
+        .filter_map(Line::width_at::<10>)
+        .collect::<Vec<_>>();
+
+    ranges.sort_by(|a, b| cmp(a.from, &b.from).then(cmp(a.to, &b.to)));
+
     dbg!(&ranges);
 
-    todo!()
+    flatten_spanned_len(ranges)
+}
+
+fn flatten_spanned_len(ranges: Vec<Range>) -> u32 {
+    let mut iter = ranges.into_iter();
+    let mut sum = 0;
+    loop {
+        let mut state = match iter.next() {
+            None => break,
+            Some(state) => state,
+        };
+
+        while let Some(el) = iter.next() {
+            if !state.intersects(&el) {
+                sum += state.spanned();
+                continue;
+            }
+
+            state = Range {
+                from: el.from.min(state.from),
+                to: el.to.max(state.to),
+            };
+        }
+
+        sum += state.spanned();
+    }
+
+    sum as u32
 }
 
 fn parse(data: &str) -> anyhow::Result<Parsed> {

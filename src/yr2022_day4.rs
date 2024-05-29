@@ -33,7 +33,6 @@ pub fn part2(data: &str) -> anyhow::Result<u32> {
     part2_withdata(data)
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Range2 {
     fst: Range,
