@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use itertools::Itertools;
 use aoc_any::{BenchTimes, Info, Solution};
 use math::Range;
 
@@ -14,7 +15,7 @@ pub const SOLUTION: Solution = Solution {
     other: &[],
 };
 
-const TEST: bool = true;
+const TEST: bool = false;
 const HEIGHT: i64 = if TEST { 10 } else { 2_000_000 };
 
 mod math {
@@ -112,7 +113,7 @@ const EXAMPLE: &str =
 
 type Parsed = (Vec<Line>, u32);
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 struct Point {
     pub x: i64,
     pub y: i64,
@@ -150,9 +151,7 @@ fn part1((data, sub): Parsed) -> i64 {
 
     ranges.sort_by(|a, b| cmp(&a.from, &b.from).then(cmp(&a.to, &b.to)));
 
-    dbg!(&ranges);
-
-    flatten_spanned_len(ranges) - (sub as i64)
+    flatten_spanned_len(ranges) - i64::from(sub)
 }
 
 fn flatten_spanned_len(ranges: Vec<Range>) -> i64 {
@@ -184,7 +183,7 @@ fn flatten_spanned_len(ranges: Vec<Range>) -> i64 {
             };
         }
 
-        sum += dbg!(state.spanned());
+        sum += state.spanned();
     }
 
     sum
@@ -212,7 +211,11 @@ fn parse(data: &str) -> anyhow::Result<Parsed> {
         .collect::<Result<_, _>>()
         .map_err(|it| anyhow!("failed to parse {it}"))?;
 
-    let x = res.iter().filter(|it| it.closest_beacon.y == HEIGHT).count();
+    let x = res
+        .iter()
+        .filter_map(|it| (it.closest_beacon.y == HEIGHT).then_some(&it.closest_beacon))
+        .dedup()
+        .count();
 
     Ok((res, x.try_into()?))
 }

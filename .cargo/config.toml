@@ -1,6 +1,9 @@
 
-[build]
-rustflags = ["-C", "target-cpu=native"]
+#[build]
+#rustflags = ["-C", "target-cpu=native"]
+
+[env]
+RUSTFLAGS="-C target-feature=+aes"
 
 [alias]
 r = "run"
