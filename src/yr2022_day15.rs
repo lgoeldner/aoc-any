@@ -27,33 +27,45 @@ mod math {
         to: i64,
     }
 
+    impl From<core::ops::Range<i64>> for Range {
+        fn from(range: core::ops::Range<i64>) -> Self {
+            Self {
+                from: range.start,
+                to: range.end,
+            }
+        }
+    }
+
     impl super::Point {
-        pub const fn manhatten_distance(&self, other: &Self) -> i64 {
+        pub const fn manhattan_distance(&self, other: &Self) -> i64 {
             (self.x - other.x).abs() + (self.y - other.y).abs()
         }
     }
 
-    pub fn width_at<const HEIGHT: i64>(line: super::Line) -> Option<Range> {
-        let radius = line.sensor.manhatten_distance(&line.closest_beacon);
-        let height_diff = (HEIGHT - line.sensor.y).abs();
+    impl super::Line {
+        pub fn width_at<const HEIGHT: i64>(&self) -> Option<Range> {
+            let radius = self.sensor.manhattan_distance(&self.closest_beacon);
+            let height_diff = (HEIGHT - self.sensor.y).abs();
 
-        (height_diff <= radius).then(|| {
-            let half_width = radius - height_diff;
-            Range {
-                from: line.sensor.x - half_width,
-                to: line.sensor.x + half_width,
-            }
-        })
+            (height_diff <= radius).then(|| {
+                let half_width = radius - height_diff;
+                Range {
+                    from: self.sensor.x - half_width,
+                    to: self.sensor.x + half_width,
+                }
+            })
+        }
     }
 
     #[test]
     pub fn test_width_at_height() {
         assert_eq!(
-            width_at::<10>(Line {
+            Line {
                 sensor: Point { x: 8, y: 7 },
                 closest_beacon: Point { x: 2, y: 10 },
-            }),
-            Some(Range { from: 2, to: 14 })
+            }
+            .width_at::<10>(),
+            Some((2..14).into())
         );
     }
 }
@@ -87,6 +99,12 @@ struct Point {
 struct Line {
     pub sensor: Point,
     pub closest_beacon: Point,
+}
+
+fn part1(data: Parsed) -> u32 {
+    let ranges = data.iter().filter_map(Line::width_at::<10>);
+
+    todo!()
 }
 
 fn parse(data: &str) -> anyhow::Result<Parsed> {
