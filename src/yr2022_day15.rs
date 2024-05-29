@@ -9,8 +9,7 @@ pub const SOLUTION: Solution = Solution {
         bench: BenchTimes::None,
     },
     part1: |_data| {
-        eprintln!("{:?}", parse(EXAMPLE));
-        todo!()
+        part1(parse(EXAMPLE)).into()
     },
     part2: None,
     other: &[],
