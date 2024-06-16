@@ -3,3 +3,4 @@ inputs/aoc_2022_day01_large_input.txt
 .env
 .cache
 test.*
+.cargo
