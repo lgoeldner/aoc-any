@@ -1,5 +1,8 @@
+use std::{num::ParseIntError, thread};
+
 use anyhow::anyhow;
 use aoc_any::{BenchTimes, Info, Solution};
+use itertools::Itertools;
 use math::Range;
 
 pub const SOLUTION: Solution = Solution {
@@ -9,7 +12,7 @@ pub const SOLUTION: Solution = Solution {
         year: 2022,
         bench: BenchTimes::None,
     },
-    part1: |_data| part1(parse(EXAMPLE).unwrap()).into(),
+    part1: |_data| part1(parse(_data).unwrap()).into(),
     part2: None,
     other: &[],
 };
@@ -118,7 +121,10 @@ fn test_part1() {
         .map(core::convert::Into::into)
         .collect::<Vec<math::Range>>();
 
-    assert_eq!(flatten_spanned_len(dbg!(data[..data.len()-3].to_vec())), 5);
+    assert_eq!(
+        flatten_spanned_len(dbg!(data[..data.len() - 3].to_vec())),
+        5
+    );
     assert_eq!(flatten_spanned_len(data), 9);
 }
 
@@ -133,8 +139,6 @@ fn part1(data: Parsed) -> u32 {
         .collect::<Vec<_>>();
 
     ranges.sort_by(|a, b| cmp(a.from, &b.from).then(cmp(a.to, &b.to)));
-
-    dbg!(&ranges);
 
     flatten_spanned_len(ranges)
 }
@@ -169,21 +173,22 @@ fn flatten_spanned_len(ranges: Vec<Range>) -> u32 {
 fn parse(data: &str) -> anyhow::Result<Parsed> {
     data.lines()
         .map(|it| {
-            sscanf::sscanf!(
-                it,
-                "Sensor at x={i64}, y={i64}: closest beacon is at x={i64}, y={i64}",
-            )
-            .map(|(x_sensor, y_sensor, x_beacon, y_beacon)| Line {
-                sensor: Point {
-                    x: x_sensor,
-                    y: y_sensor,
+            let mut spl = it.split(":").map(|it| -> Result<_, ParseIntError> {
+                let v = it.split("=").skip(1).collect_vec();
+                Ok([v[0][..v[0].len() - 3].parse::<i64>()?, v[1].parse::<i64>()?])
+            });
+
+            Ok(Line {
+                closest_beacon: {
+                    let n = spl.next().unwrap()?;
+                    Point { x: n[0], y: n[1] }
                 },
-                closest_beacon: Point {
-                    x: x_beacon,
-                    y: y_beacon,
+                sensor: {
+                    let n = spl.next().unwrap()?;
+                    Point { x: n[0], y: n[1] }
                 },
             })
         })
-        .collect::<Result<_, _>>()
+        .collect::<Result<_, ParseIntError>>()
         .map_err(|it| anyhow!("failed to parse {it}"))
 }
